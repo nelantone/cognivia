@@ -8,6 +8,11 @@ Cognivia is a Python and Streamlit application for turning noisy learning
 questions into evidence-aware next steps. Its product principle is simple:
 strengthen human judgment rather than replace it.
 
+> **Public history:** Cognivia was initially developed in a private repository.
+> This public repository begins with a sanitized baseline rather than a copy of
+> that private commit history. The earlier technical progression is summarized
+> in [Engineering History](docs/engineering-history.md).
+
 ## The problem Cognivia addresses
 
 AI learners face an overload of tools, topics, frameworks, role labels, and
@@ -162,9 +167,10 @@ Optional PostgreSQL memory sits behind the memory-store boundary.
 ```
 
 Presentation, orchestration, retrieval, provider access, memory, persistence,
-security, and evaluation remain separate implementation concerns. See
-[`docs/architecture.md`](docs/architecture.md) for the verified component
-map.
+input hygiene, and evaluation are represented by distinct modules. `app.py`
+remains the Streamlit composition root and still coordinates some workflow,
+export, and persistence concerns. See
+[`docs/architecture.md`](docs/architecture.md) for the verified component map.
 
 ## Documentation map
 

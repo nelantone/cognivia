@@ -5,6 +5,12 @@
 > [architecture.md](architecture.md) and
 > [capstone-reviewer-guide.md](capstone-reviewer-guide.md).
 
+The work described here was initially developed in a private repository. The
+public repository begins with a sanitized baseline and intentionally does not
+reproduce the private commit graph, hashes, tags, or repository metadata. This
+document preserves the useful product chronology; the canonical concise
+technical chronology is [Engineering History](engineering-history.md).
+
 Skill Compass did not start as a complete Agentic RAG system. It evolved in
 stages, and each stage solved a limitation that became obvious in the previous
 version.
@@ -37,8 +43,9 @@ Sprint 2 is where Skill Compass really started to take shape. The app gained a
 Markdown knowledge base, chunking, embeddings, semantic retrieval, and
 recommendations that could use retrieved evidence instead of only prompt text.
 
-That baseline is captured by the `sprint-2-baseline` tag. It was a meaningful
-step forward because learning guidance stopped being purely generative.
+The private development history recorded a Sprint 2 baseline at this point. It
+was a meaningful step forward because learning guidance stopped being purely
+generative.
 
 The remaining problem was orchestration. Retrieval, fallback, and response
 assembly were still too implicit, memory was limited, and groundedness was not
@@ -107,11 +114,12 @@ The main lesson is simple: relevance is not the same as groundedness.
 ## S3E — Productisation and reviewer readiness
 
 The last Sprint 3 phase focused on making the engineering work visible and
-reviewable. An independent read-only audit found no P0/P1 backend issues. The
-main gap was UI clarity, so the product framing was tightened instead of
-changing the backend again.
+reviewable. A historical read-only audit recorded no P0/P1 backend issues. The
+main gap identified at that stage was UI clarity, so the product framing was
+tightened instead of changing the backend again. This is a historical result,
+not a current publication-readiness claim.
 
-The hierarchy is now explicit:
+At that stage, the hierarchy was expressed as:
 
 - Brand: Skill Compass
 - Positioning: AI Engineer Compass
@@ -127,22 +135,14 @@ selection state, notes, and broader AppTest coverage.
 This phase was not cosmetic. It made the behavior understandable, exposed the
 agentic workflow to reviewers, and gave the project stronger smoke coverage.
 
-## Git References
+## Historical provenance
 
-These are the main anchors for the evolution story:
-
-- `sprint-2-baseline`: Sprint 2 baseline
-- `sprint-3-project`: early Sprint 3 checkpoint, not final Sprint 3
-- `66102c1` (`Add bounded Agentic RAG retrieval workflow`): completed bounded
-  Agentic RAG backend checkpoint
-- `f00f406` (`Document Sprint 3 architecture and product positioning`):
-  product framing and architecture documentation
-- `655ddc9` (`Polish Noise-to-Signal branding and status display`): UI
-  productisation
-- `0b1370d` (`Fix out-of-domain single-focus grounding`): final groundedness
-  hardening fix
-
-The final Sprint 3 review-ready checkpoint is tagged as `sprint-3-review-ready`.
+Earlier versions of this document cited private development tags and commit
+identifiers for the Sprint 2 baseline, Sprint 3 checkpoints, bounded Agentic
+RAG work, product framing, UI productisation, and groundedness hardening. Those
+references were verified against the read-only private archive during public
+documentation preparation. They are intentionally not presented as public Git
+references because the sanitized public baseline has a separate history.
 
 ## What This Evolution Shows
 
@@ -158,8 +158,8 @@ That progression is the real story of Skill Compass.
 
 ## Capstone — Cognivia UX and documentation consolidation
 
-After the Sprint 3 review-ready checkpoint, the project was consolidated under
-the Cognivia name. The current reviewer-facing app keeps the Noise-to-Signal
+After the private Sprint 3 review-ready checkpoint, the project was consolidated
+under the Cognivia name. The current reviewer-facing app keeps the Noise-to-Signal
 workflow but adds clearer recommendation explanations, AI career path and skill
 gap descriptions, numbered learning direction schemas, persistent selected path
 state, a mini notebook for reflection, compact runtime/provider messaging, and
