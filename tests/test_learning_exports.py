@@ -1,10 +1,13 @@
 """Characterization tests for the app-level learning export contracts."""
 
+import ast
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 
 import app as cognivia_app
+from tools import learning_exports
 
 
 def _schema(nodes=None):
@@ -171,11 +174,14 @@ def test_full_plan_markdown_is_byte_stable_and_does_not_mutate_inputs():
     original_note = deepcopy(note)
     original_nodes = list(schema["nodes"])
 
-    markdown = cognivia_app.build_full_learning_plan_markdown(
+    markdown = learning_exports.build_full_learning_plan_document(
         goal="Build a reliable RAG evaluator.",
         decision=decision,
         selected_schema=schema,
         note=note,
+        evidence_reason=(
+            "The evidence favors evaluation because it exposes retrieval failures."
+        ),
     )
 
     assert markdown == EXPECTED_FULL_PLAN
@@ -257,7 +263,7 @@ def test_learning_path_map_steps_freeze_node_count_behavior(
     original_schema = deepcopy(schema)
     original_nodes = list(schema["nodes"])
 
-    steps = cognivia_app._learning_path_map_steps(schema)
+    steps = learning_exports._learning_path_map_steps(schema)
 
     assert steps == [
         ("Start", expected_start),
@@ -310,14 +316,14 @@ def test_full_plan_preserves_long_canonical_values_without_truncation():
     ],
 )
 def test_markdown_text_freezes_normalization_and_fallback(value, fallback, expected):
-    assert cognivia_app._markdown_text(value, fallback) == expected
+    assert learning_exports._markdown_text(value, fallback) == expected
 
 
 def test_markdown_list_normalizes_items_without_mutating_input():
     items = ["  RAG  ", "", None, "retrieval\n quality"]
     original_items = list(items)
 
-    result = cognivia_app._markdown_list(items)
+    result = learning_exports._markdown_list(items)
 
     assert result == ["RAG", "retrieval quality"]
     assert items == original_items
@@ -339,7 +345,7 @@ def test_time_available_today_freezes_supported_and_fallback_values(
     expected,
 ):
     fallback = "Not specified. Use one focused 2-hour block if available."
-    assert cognivia_app._time_available_today(decision) == (expected or fallback)
+    assert learning_exports._time_available_today(decision) == (expected or fallback)
 
 
 def test_populated_reflection_markdown_is_byte_stable_and_non_mutating():
@@ -360,7 +366,7 @@ def test_populated_reflection_markdown_is_byte_stable_and_non_mutating():
     }
     original_payload = deepcopy(payload)
 
-    markdown = cognivia_app.build_learning_reflection_markdown(payload)
+    markdown = learning_exports.build_learning_reflection_markdown(payload)
 
     assert markdown == """# Cognivia reflection
 
@@ -392,7 +398,7 @@ def test_empty_reflection_markdown_freezes_current_output():
     }
     original_payload = deepcopy(payload)
 
-    markdown = cognivia_app.build_learning_reflection_markdown(payload)
+    markdown = learning_exports.build_learning_reflection_markdown(payload)
 
     assert markdown == "\n".join(
         [
@@ -415,7 +421,7 @@ def test_empty_reflection_markdown_freezes_current_output():
             "",
         ]
     )
-    assert cognivia_app.build_learning_reflection_markdown(
+    assert learning_exports.build_learning_reflection_markdown(
         {**payload, "selected_path": []}
     ) == ""
     assert payload == original_payload
@@ -424,3 +430,26 @@ def test_empty_reflection_markdown_freezes_current_output():
 def test_existing_app_level_builder_names_remain_callable():
     assert callable(cognivia_app.build_full_learning_plan_markdown)
     assert callable(cognivia_app.build_learning_reflection_markdown)
+    assert cognivia_app.build_full_learning_plan_markdown(
+        goal="Build a reliable RAG evaluator.",
+        decision=_decision(),
+        selected_schema=_schema(),
+        note=_note(),
+    ) == EXPECTED_FULL_PLAN
+    assert (
+        cognivia_app.build_learning_reflection_markdown
+        is learning_exports.build_learning_reflection_markdown
+    )
+
+    module_tree = ast.parse(Path(learning_exports.__file__).read_text())
+    imported_modules = {
+        node.module
+        for node in ast.walk(module_tree)
+        if isinstance(node, ast.ImportFrom)
+    } | {
+        alias.name
+        for node in ast.walk(module_tree)
+        if isinstance(node, ast.Import)
+        for alias in node.names
+    }
+    assert imported_modules == {"__future__", "tools.learning_direction"}
