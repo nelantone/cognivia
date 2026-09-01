@@ -1,0 +1,4 @@
+interface:
+  display_name: "Safe Refactor"
+  short_description: "Run incremental behavior-preserving refactors"
+  default_prompt: "Use $safe-refactor to plan and execute one behavior-preserving refactor phase."

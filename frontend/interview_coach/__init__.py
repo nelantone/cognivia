@@ -1,0 +1,1 @@
+"""Interview Coach frontend package."""

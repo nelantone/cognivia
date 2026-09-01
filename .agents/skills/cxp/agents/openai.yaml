@@ -1,0 +1,6 @@
+interface:
+  display_name: "CXP — Codex Prompt"
+  short_description: "Explicit project orchestration and handoff"
+  default_prompt: "Use $cxp to generate or execute this structured Cognivia Codex Prompt."
+policy:
+  allow_implicit_invocation: false

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Task Brief"
+  short_description: "Turn requests into precise implementation briefs"
+  default_prompt: "Use $task-brief to turn this request into a precise implementation brief."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Architecture Audit"
+  short_description: "Map architecture, dependencies, ownership, and risks"
+  default_prompt: "Use $architecture-audit to inventory this architecture without editing files."

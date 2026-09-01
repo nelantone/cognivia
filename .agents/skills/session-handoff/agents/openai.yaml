@@ -1,0 +1,4 @@
+interface:
+  display_name: "Session Handoff"
+  short_description: "Create factual evidence-based project handoffs"
+  default_prompt: "Use $session-handoff to create a factual handoff with the exact next action."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Commit Review"
+  short_description: "Review staged scope and commit readiness safely"
+  default_prompt: "Use $commit-review to assess this change and propose a safe commit plan."

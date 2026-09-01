@@ -1,0 +1,4 @@
+interface:
+  display_name: "Docs Update"
+  short_description: "Update documentation from verified evidence"
+  default_prompt: "Use $docs-update to make this documentation match verified implementation evidence."
