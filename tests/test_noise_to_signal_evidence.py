@@ -1,11 +1,14 @@
 """Characterization tests for graph-level evidence interpretation contracts."""
 
+import ast
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 from langchain_core.documents import Document
 
 from tools import noise_to_signal_graph as graph
+from tools import noise_to_signal_evidence as evidence
 
 
 INFORMATIONAL_GOAL = "Why is RAG evaluation useful for AI engineers?"
@@ -278,6 +281,68 @@ def test_graph_level_evidence_interpretation_names_remain_importable():
     )
 
     assert all(callable(getattr(graph, name, None)) for name in compatibility_names)
+
+
+def test_graph_reexports_extracted_evidence_helpers_without_duplicate_implementations():
+    assert graph.build_informational_answer is evidence.build_informational_answer
+    assert (
+        graph._reasoning_items_with_full_text
+        is evidence._reasoning_items_with_full_text
+    )
+    assert (
+        graph._single_focus_has_domain_or_direct_support
+        is evidence._single_focus_has_domain_or_direct_support
+    )
+
+    graph_tree = ast.parse(Path(graph.__file__).read_text(encoding="utf-8"))
+    evidence_tree = ast.parse(Path(evidence.__file__).read_text(encoding="utf-8"))
+    graph_functions = {
+        node.name for node in graph_tree.body if isinstance(node, ast.FunctionDef)
+    }
+    evidence_functions = {
+        node.name for node in evidence_tree.body if isinstance(node, ast.FunctionDef)
+    }
+    extracted_implementations = {
+        "_informational_question_shape",
+        "_is_sentence_like_claim",
+        "_remove_markdown_headings",
+        "_is_duplicate_sentence",
+        "build_informational_answer",
+        "_document_identity_keys",
+        "_reasoning_items_with_full_text",
+        "_single_focus_has_domain_or_direct_support",
+    }
+
+    assert extracted_implementations <= evidence_functions
+    assert extracted_implementations.isdisjoint(graph_functions)
+    assert {"build_informational_answer_from_state", "assess_evidence"} <= (
+        graph_functions
+    )
+
+
+def test_evidence_module_dependency_direction_excludes_graph_ui_and_providers():
+    module_tree = ast.parse(Path(evidence.__file__).read_text(encoding="utf-8"))
+    imported_modules = {
+        node.module
+        for node in ast.walk(module_tree)
+        if isinstance(node, ast.ImportFrom) and node.module
+    } | {
+        alias.name
+        for node in ast.walk(module_tree)
+        if isinstance(node, ast.Import)
+        for alias in node.names
+    }
+
+    assert "tools.study_plan" in imported_modules
+    assert not {
+        "app",
+        "streamlit",
+        "tools.noise_to_signal_graph",
+        "tools.provider_config",
+        "openrouter_client",
+        "langgraph",
+        "langchain_openai",
+    } & imported_modules
 
 
 def test_state_answer_preserves_graph_level_builder_monkeypatch_seam(monkeypatch):
