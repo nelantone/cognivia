@@ -9,6 +9,12 @@ Versioning 2.0.0.
 
 ### Changed
 
+- Extracted deterministic learning-plan and reflection Markdown formatting to
+  `tools/learning_exports.py` while retaining Streamlit coordination in
+  `app.py`.
+- Extracted deterministic evidence interpretation to
+  `tools/noise_to_signal_evidence.py` while retaining graph orchestration and
+  compatibility seams in `tools/noise_to_signal_graph.py`.
 - Clarified the relationship between private development history and the
   sanitized public repository baseline.
 

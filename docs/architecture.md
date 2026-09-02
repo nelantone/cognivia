@@ -29,6 +29,8 @@ flowchart LR
 | --- | --- |
 | Streamlit composition, presentation, and interaction | `app.py` and `frontend/` |
 | Application orchestration | `tools/noise_to_signal_graph.py` |
+| Deterministic evidence interpretation | `tools/noise_to_signal_evidence.py` |
+| Deterministic learning-export formatting | `tools/learning_exports.py` |
 | Retrieval and corpus loading | `rag/` |
 | Provider selection and model access | `tools/provider_config.py`, `openrouter_client.py`, and provider-aware RAG modules |
 | Learner memory | `memory/` |
@@ -36,11 +38,13 @@ flowchart LR
 | Evaluation definitions and evaluators | `rag/evaluation.py` |
 | Local knowledge base | `data/knowledge_base/` |
 
-`app.py` is the Streamlit composition root. In addition to UI assembly and
-session-state handling, it retains some workflow, export-building, and
-persistence coordination. Retrieval, provider configuration, memory-store
-implementations, and evaluation have distinct modules, but the current
-separation is pragmatic rather than complete.
+`app.py` is the Streamlit composition root. In addition to UI assembly, it
+retains session-state coordination, callbacks, rendering, download controls,
+learning-note payload handling, evidence-reason derivation, and persistence
+coordination. Deterministic export formatting is delegated to
+`tools/learning_exports.py`. Retrieval, evidence interpretation, provider
+configuration, memory-store implementations, and evaluation have distinct
+modules, but the current separation is pragmatic rather than complete.
 
 ## Product modes
 
@@ -82,6 +86,22 @@ The graph is assembled from explicit nodes that:
 The graph uses an in-process checkpoint saver. This supports graph state during
 the running process; it is not a claim of durable conversation persistence
 across deployments.
+
+Deterministic informational-claim recognition, heading filtering, duplicate
+handling, evidence-identity reconciliation, transient full-text enrichment,
+and single-focus support checks belong to
+`tools/noise_to_signal_evidence.py`. `tools/noise_to_signal_graph.py` retains
+LangGraph construction and state transitions, routing, retrieval and bounded
+retry orchestration, and provider-backed classification.
+`assess_evidence` and `build_informational_answer_from_state` remain graph-level
+wrappers, and compatibility imports preserve the established graph-level call
+and monkeypatch seams. This extraction reduces graph-module responsibility; it
+does not make evidence assessment a complete correctness guarantee.
+
+As validation evidence for that extraction, the complete isolated offline
+suite passed 560 tests at the time of the change. That historical result
+describes the validated change set, not a permanent test-count or production
+guarantee.
 
 Vague or context-only goals route to clarification or guided intake. Other
 clear requests use the direct-decision path. Retrieval relevance is separate
@@ -210,6 +230,15 @@ The Streamlit layer implements namespaced session state, Focus Mode entry and
 exit, a new-search reset, and exports for learner memory, notes, and full
 learning plans. Their end-to-end browser behavior remains **PENDING manual
 verification**.
+
+`tools/learning_exports.py` owns deterministic Markdown formatting for full
+learning plans and reflection exports. `app.py` remains responsible for the
+Streamlit-facing composition around those builders, including session state,
+callbacks, rendering, download controls, note payloads, and derivation of the
+evidence reason supplied to the full-plan builder. As validation evidence for
+this behavior-preserving extraction, the complete isolated suite passed 540
+tests at the time of the change; this is a record of that change set rather
+than an ongoing guarantee.
 
 The PostgreSQL store records normalized profile snapshots and learning events
 through the memory-store interface. The null store returns no durable profile
