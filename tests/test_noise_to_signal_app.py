@@ -348,6 +348,32 @@ def test_noise_to_signal_video_intro_appears_on_first_visit():
     assert "Begin" not in button_labels
 
 
+def test_noise_to_signal_startup_cover_is_the_first_opaque_app_delta():
+    app_source = Path("app.py").read_text(encoding="utf-8")
+    page_config_call = 'st.set_page_config(initial_sidebar_state="collapsed")'
+    cover_id = 'id="cognivia-startup-intro-cover"'
+
+    assert app_source.index(page_config_call) < app_source.index(cover_id)
+    assert app_source.index(cover_id) < app_source.index("load_dotenv()")
+    assert app_source.index(cover_id) < app_source.index(
+        "app_mode = st.sidebar.radio("
+    )
+    assert "position: fixed" in app_source
+    assert "inset: 0" in app_source
+    assert "z-index: 100003" in app_source
+    assert "background: #0B132B" in app_source
+    assert "opacity: 1" in app_source
+
+    app = AppTest.from_file("app.py")
+    app.run(timeout=APP_TEST_TIMEOUT_SECONDS)
+
+    markdown = [str(item.value) for item in app.markdown]
+    assert not app.exception
+    assert cover_id in markdown[0]
+    assert "cognivia-full-inverse-clean.png" not in markdown[0]
+    assert "data:image/png;base64," in markdown[0]
+
+
 def test_noise_to_signal_intro_does_not_replay_after_normal_rerun():
     app = AppTest.from_file("app.py")
     app.run(timeout=APP_TEST_TIMEOUT_SECONDS)
@@ -1266,6 +1292,7 @@ def test_noise_to_signal_intro_video_markup_uses_video0_without_loop(monkeypatch
         "assets/brand/video0.mp4"
     )
     assert "data:mock/video0.mp4" in markup
+    assert 'class="nts-intro-video-layer is-playing"' in markup
     assert "autoplay muted playsinline" in markup
     assert "loop" not in markup
     assert "video0-trimmed.mp4" not in markup
@@ -1292,6 +1319,17 @@ def test_noise_to_signal_intro_video_controller_releases_the_application():
     assert "video.loop = false" in source
     assert 'video.addEventListener("ended", finishIntro' in source
     assert 'video.addEventListener("error", finishIntro' in source
+    assert 'video.addEventListener(\n                        "loadeddata"' in source
+    assert 'video.addEventListener(\n                        "playing"' in source
+    assert "loadedDataReady = true" in source
+    assert "playbackReady = true" in source
+    assert "loadedDataReady = video.readyState >= 2" in source
+    assert "playbackReady = !video.paused && !video.ended" in source
+    assert "if (!loadedDataReady || !playbackReady || !layer)" in source
+    assert 'layer.classList.add("is-ready")' in source
+    assert 'cover.classList.add("is-releasing")' in source
+    assert 'cover.addEventListener(\n                    "transitionend"' in source
+    assert "releaseStartupCover();" in source
     assert "finishTimer = window.setTimeout(finishIntro, 12000)" in source
     assert "playback.catch(finishIntro)" in source
     assert 'layer.classList.add("is-playing")' in source
@@ -1351,6 +1389,9 @@ def test_noise_to_signal_intro_has_no_audio_or_manual_gate():
     assert not hasattr(cognivia_app, "_render_noise_to_signal_intro_audio_control")
     assert not hasattr(cognivia_app, "NOISE_TO_SIGNAL_WAVES_AUDIO_PATH")
     assert "_render_noise_to_signal_intro_video_controller()" in intro_source
+    assert intro_source.index("_render_noise_to_signal_intro_video_controller()") > (
+        intro_source.index("if markup:")
+    )
     assert "_complete_noise_to_signal_intro()" in intro_source
     assert "st.button" not in intro_source
     assert "audio" not in intro_source.lower()

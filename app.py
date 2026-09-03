@@ -1,3 +1,5 @@
+# ruff: noqa: E402  # The startup cover must precede heavier application imports.
+
 import html
 import json
 import logging
@@ -18,6 +20,69 @@ from frontend.assets import (
     NOISE_TO_SIGNAL_LOGO_PATH,
     _asset_data_uri,
 )
+
+NOISE_TO_SIGNAL_INTRO_STATE_SESSION_KEY = "noise_to_signal_intro_state"
+
+st.set_page_config(initial_sidebar_state="collapsed")
+
+# This is intentionally the first Streamlit delta. It bridges the browser's
+# startup surface to the video without allowing later layout deltas to show.
+_startup_intro_requested = (
+    st.session_state.get(NOISE_TO_SIGNAL_INTRO_STATE_SESSION_KEY) != "complete"
+    or st.query_params.get("intro") == "1"
+)
+if _startup_intro_requested:
+    _startup_logo_uri = _asset_data_uri(NOISE_TO_SIGNAL_LOGO_PATH)
+    _startup_logo_markup = (
+        f'<img src="{html.escape(_startup_logo_uri, quote=True)}" '
+        'alt="Cognivia">'
+        if _startup_logo_uri
+        else '<span class="cognivia-startup-wordmark">Cognivia</span>'
+    )
+    st.markdown(
+        f"""
+        <style>
+            #cognivia-startup-intro-cover {{
+                position: fixed;
+                inset: 0;
+                z-index: 100003;
+                display: grid;
+                place-items: center;
+                overflow: hidden;
+                background: #0B132B;
+                opacity: 1;
+                visibility: visible;
+                pointer-events: auto;
+                transition:
+                    opacity 480ms cubic-bezier(0.22, 1, 0.36, 1),
+                    visibility 0s linear 480ms;
+            }}
+
+            #cognivia-startup-intro-cover.is-releasing {{
+                opacity: 0;
+                visibility: hidden;
+                pointer-events: none;
+            }}
+
+            #cognivia-startup-intro-cover img {{
+                display: block;
+                width: min(58vw, 360px);
+                height: auto;
+            }}
+
+            .cognivia-startup-wordmark {{
+                color: #F4F7FA;
+                font: 600 clamp(2rem, 7vw, 4rem) / 1 sans-serif;
+                letter-spacing: 0.08em;
+            }}
+        </style>
+        <div id="cognivia-startup-intro-cover" aria-hidden="true">
+            {_startup_logo_markup}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 from frontend.browser.controllers import (
     _install_app_rerender_stability_guard,
     _render_noise_to_signal_control_accessibility,
@@ -96,8 +161,6 @@ from tools.study_plan import (
     format_evidence_label,
 )
 
-st.set_page_config(initial_sidebar_state="collapsed")
-
 # Optional LangSmith tracing is disabled by default.
 load_dotenv()
 configure_langsmith()
@@ -117,7 +180,6 @@ FULL_LEARNING_PLAN_DOWNLOAD_LABEL = "Download full learning plan"
 FULL_LEARNING_PLAN_FILE_NAME = "cognivia-learning-plan.md"
 REFLECTION_MARKDOWN_FILE_NAME = "cognivia-reflection.md"
 MARKDOWN_DOWNLOAD_MIME = "text/markdown"
-NOISE_TO_SIGNAL_INTRO_STATE_SESSION_KEY = "noise_to_signal_intro_state"
 NOISE_TO_SIGNAL_FOCUS_MODE_SESSION_KEY = "noise_to_signal_focus_mode"
 NOISE_TO_SIGNAL_EXAMPLES_OPEN_SESSION_KEY = "noise_to_signal_examples_open"
 NOISE_TO_SIGNAL_RESULT_FOCUS_SESSION_KEY = "noise_to_signal_result_focus_requested"
@@ -2176,8 +2238,9 @@ def _noise_to_signal_intro_video_markup() -> str | None:
     video_uri = _asset_data_uri(NOISE_TO_SIGNAL_INTRO_VIDEO_PATH)
     if not video_uri:
         return None
+    # Activate the opaque overlay in its first DOM frame, before landing deltas paint.
     return (
-        '<div class="nts-intro-video-layer" aria-hidden="true">'
+        '<div class="nts-intro-video-layer is-playing" aria-hidden="true">'
         f'<video id="nts-intro-video" src="{html.escape(video_uri, quote=True)}" '
         "autoplay muted playsinline preload=\"auto\"></video>"
         "</div>"
@@ -2188,7 +2251,9 @@ def _render_noise_to_signal_intro() -> None:
     markup = _noise_to_signal_intro_video_markup()
     if markup:
         st.markdown(markup, unsafe_allow_html=True)
-        _render_noise_to_signal_intro_video_controller()
+    # The controller also releases the startup cover through its DOM failsafe
+    # when the video asset cannot be rendered.
+    _render_noise_to_signal_intro_video_controller()
     _complete_noise_to_signal_intro()
 
 
