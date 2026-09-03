@@ -72,6 +72,31 @@ def _render_noise_to_signal_intro_video_controller() -> None:
             let domReadyTimer = null;
             let domReadyFrame = null;
             let controllerFinished = false;
+            let loadedDataReady = false;
+            let playbackReady = false;
+
+            const releaseStartupCover = () => {
+                const cover = appDocument.getElementById(
+                    "cognivia-startup-intro-cover",
+                );
+                if (!cover || cover.classList.contains("is-releasing")) {
+                    return;
+                }
+                cover.classList.add("is-releasing");
+                cover.addEventListener(
+                    "transitionend",
+                    () => cover.remove(),
+                    { once: true },
+                );
+            };
+
+            const handoffToIntro = () => {
+                if (!loadedDataReady || !playbackReady || !layer) {
+                    return;
+                }
+                layer.classList.add("is-ready");
+                releaseStartupCover();
+            };
 
             const finishIntro = () => {
                 controllerFinished = true;
@@ -92,6 +117,7 @@ def _render_noise_to_signal_intro_video_controller() -> None:
                     layer.classList.remove("is-playing");
                     layer.classList.add("is-complete");
                 }
+                releaseStartupCover();
             };
 
             let forceReplay = false;
@@ -159,6 +185,27 @@ def _render_noise_to_signal_intro_video_controller() -> None:
                     video.loop = false;
                     video.addEventListener("ended", finishIntro, { once: true });
                     video.addEventListener("error", finishIntro, { once: true });
+                    video.addEventListener(
+                        "loadeddata",
+                        () => {
+                            loadedDataReady = true;
+                            handoffToIntro();
+                        },
+                        { once: true },
+                    );
+                    video.addEventListener(
+                        "playing",
+                        () => {
+                            playbackReady = true;
+                            handoffToIntro();
+                        },
+                        { once: true },
+                    );
+                    // The autoplay attributes can win the race with this controller.
+                    // These states mean the corresponding media events already fired.
+                    loadedDataReady = video.readyState >= 2;
+                    playbackReady = !video.paused && !video.ended;
+                    handoffToIntro();
                     finishTimer = window.setTimeout(finishIntro, 12000);
                     const playback = video.play();
                     if (playback) {

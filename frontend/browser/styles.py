@@ -1289,6 +1289,10 @@ def _render_noise_to_signal_styles() -> None:
             animation: ntsIntroFailsafe 12s linear forwards;
         }}
 
+        .nts-intro-video-layer.is-ready {{
+            opacity: 1;
+        }}
+
         .nts-intro-video-layer.is-complete {{
             opacity: 0;
             visibility: hidden;
