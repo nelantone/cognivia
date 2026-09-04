@@ -300,55 +300,17 @@ def _render_noise_to_signal_control_accessibility(
             const previousController = parentWindow[controllerKey];
             if (previousController) {{
                 previousController.observer.disconnect();
-                appDocument.removeEventListener(
-                    "keydown",
-                    previousController.handleSearchKeydown,
-                    true,
-                );
+                if (previousController.handleSearchKeydown) {{
+                    appDocument.removeEventListener(
+                        "keydown",
+                        previousController.handleSearchKeydown,
+                        true,
+                    );
+                }}
             }}
-            const searchInputSelector = (
-                ".st-key-noise_to_signal_search_shell input"
-            );
-            const submitButtonSelector = (
-                ".st-key-generate_noise_to_signal_decision button"
-            );
-            const handleSearchKeydown = (event) => {{
-                if (
-                    event.key !== "Enter"
-                    || event.isComposing
-                    || event.shiftKey
-                    || event.ctrlKey
-                    || event.metaKey
-                    || event.altKey
-                ) {{
-                    return;
-                }}
-                const eventTarget = event.target;
-                if (
-                    !(eventTarget instanceof parentWindow.HTMLInputElement)
-                    || !eventTarget.matches(searchInputSelector)
-                ) {{
-                    return;
-                }}
-                const submitButton = appDocument.querySelector(
-                    submitButtonSelector
-                );
-                if (
-                    !submitButton
-                    || submitButton.disabled
-                    || submitButton.getAttribute("aria-disabled") === "true"
-                ) {{
-                    return;
-                }}
-                event.preventDefault();
-                event.stopPropagation();
-                submitButton.click();
-            }};
             const observer = new parentWindow.MutationObserver(applyLabels);
             observer.observe(appDocument.body, {{ childList: true, subtree: true }});
-            appDocument.addEventListener("keydown", handleSearchKeydown, true);
             parentWindow[controllerKey] = {{
-                handleSearchKeydown,
                 observer,
             }};
 

@@ -2310,13 +2310,17 @@ def _render_noise_to_signal_home(last_goal: str | None, last_decision) -> None:
                     type="tertiary",
                     disabled=is_processing,
                 )
-                goal = st.text_input(
+                submission_form = st.form(
+                    "noise_to_signal_search_form",
+                    border=False,
+                )
+                goal = submission_form.text_input(
                     "Learning decision",
                     placeholder="Help me decide what to learn next...",
                     key="noise_to_signal_goal",
                     label_visibility="collapsed",
                 )
-                submitted = st.button(
+                submitted = submission_form.form_submit_button(
                     "↵",
                     key="generate_noise_to_signal_decision",
                     help="Submit learning decision",
