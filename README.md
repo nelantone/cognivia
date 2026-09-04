@@ -4,9 +4,50 @@
 
 # Cognivia
 
-Cognivia is a Python and Streamlit application for turning noisy learning
-questions into evidence-aware next steps. Its product principle is simple:
-strengthen human judgment rather than replace it.
+## Evidence-Guided AI Learning Decision Application
+
+Evidence-guided AI learning decision application built with Python, RAG, and
+LangGraph to turn noisy learning questions into evidence-aware next steps.
+
+Designed around bounded LLM workflows, explicit evidence states,
+deterministic fallbacks, and engineering reliability—helping people make
+better learning decisions without replacing human judgment.
+
+**Python · RAG · LangGraph · Streamlit · Evaluation & Reliability · Pytest · GitHub Actions**
+
+## Engineering Highlights
+
+- Bounded LangGraph orchestration replaces open-ended autonomous loops with
+  explicit routes and terminal outcomes.
+- Evidence-aware RAG separates retrieval relevance from direct support,
+  exposes low-support states, and can return `insufficient_evidence` instead
+  of forcing an answer.
+- Deterministic fallbacks and explicit retrieval, provider, and evidence
+  failure states keep degraded behavior visible.
+- 500+ automated tests cover UI, orchestration, retrieval, provider, memory,
+  and security paths; GitHub Actions runs the offline suite and Ruff in CI.
+
+## Project Status
+
+Cognivia is a functional, locally validated MVP under active development. The
+current version demonstrates its core decision workflow, evidence-aware RAG,
+bounded LangGraph orchestration, explicit fallback behavior, automated
+testing, and CI.
+
+It is not presented as a production-ready or multi-user service.
+
+### Next priorities
+
+These roadmap items are planned, not implemented:
+
+- Deploy a reproducible public demo with appropriate usage and security
+  controls.
+- Introduce user accounts and durable user profiles.
+- Extend learner continuity with production-ready long-term memory.
+- Continue focused UI and accessibility improvements.
+
+See [Future Improvements and To-do](docs/future-improvements.md) for the
+maintained broader roadmap.
 
 > **Public history:** Cognivia was initially developed in a private repository.
 > This public repository begins with a sanitized baseline rather than a copy of
