@@ -13,6 +13,7 @@ from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
 
 import openrouter_client
+import pytest
 import streamlit as st
 from PIL import Image
 from streamlit.testing.v1 import AppTest
@@ -21,6 +22,13 @@ from tools.learning_direction import generate_learning_direction_schemas
 from tools.runtime_status import build_runtime_status_lines
 
 APP_TEST_TIMEOUT_SECONDS = 30
+
+
+@pytest.fixture(autouse=True)
+def _reset_streamlit_main_form_context():
+    st._main._form_data = None
+    yield
+    st._main._form_data = None
 
 
 def _relative_luminance(color: str) -> float:
@@ -121,6 +129,7 @@ def _run_noise_to_signal_app_sequence(
     initial_session_state=None,
     intro_complete=True,
     examples_open=False,
+    submit_with_current_input=False,
 ):
     results = (
         list(initial_results)
@@ -171,15 +180,134 @@ def _run_noise_to_signal_app_sequence(
             timeout=APP_TEST_TIMEOUT_SECONDS
         )
         for user_input, _, after_decision in steps:
-            app.text_input(key="noise_to_signal_goal").set_value(user_input).run(
-                timeout=APP_TEST_TIMEOUT_SECONDS
-            )
+            goal_input = app.text_input(key="noise_to_signal_goal")
+            goal_input.set_value(user_input)
+            if not submit_with_current_input:
+                app.run(timeout=APP_TEST_TIMEOUT_SECONDS)
             app.button(key="generate_noise_to_signal_decision").click().run(
                 timeout=APP_TEST_TIMEOUT_SECONDS
             )
             if after_decision:
                 after_decision(app)
         return app, graph_stub
+
+
+def test_noise_to_signal_first_submission_captures_current_input_in_single_event():
+    goal = "Kubernetes for AI Engineer?"
+    app, graph_stub = _run_noise_to_signal_app_sequence(
+        [(goal, _single_focus_result(goal), None)],
+        memory_store=RecordingMemoryStore(),
+        submit_with_current_input=True,
+    )
+
+    assert not app.exception
+    assert graph_stub.calls == [
+        (
+            (goal,),
+            {"thread_id": app.session_state["noise_to_signal_thread_id"]},
+        )
+    ]
+    assert app.session_state["noise_to_signal_last_goal"] == goal
+    assert "Please enter a learning goal or decision." not in "\n".join(
+        str(item.value) for item in app.error
+    )
+
+
+def test_noise_to_signal_replacement_submits_current_query_once():
+    query_a = "Should I learn LangGraph or RAG evaluation?"
+    query_b = "Kubernetes for AI Engineer?"
+    result_a = _single_focus_result(query_a)
+    result_b = _single_focus_result(query_b)
+
+    app, graph_stub = _run_noise_to_signal_app_sequence(
+        [
+            (query_a, result_a, None),
+            (query_b, result_b, None),
+        ],
+        memory_store=RecordingMemoryStore(),
+        submit_with_current_input=True,
+    )
+
+    assert not app.exception
+    assert [call[0][0] for call in graph_stub.calls] == [query_a, query_b]
+    assert app.session_state["noise_to_signal_goal"] == query_b
+    assert app.session_state["noise_to_signal_last_goal"] == query_b
+    assert app.session_state["noise_to_signal_last_decision"] == result_b
+
+
+def test_noise_to_signal_visible_non_empty_value_never_uses_empty_validation():
+    goal = "Kubernetes for AI Engineer?"
+    app, graph_stub = _run_noise_to_signal_app_sequence(
+        [(goal, _single_focus_result(goal), None)],
+        memory_store=RecordingMemoryStore(),
+        submit_with_current_input=True,
+    )
+
+    assert [call[0][0] for call in graph_stub.calls] == [goal]
+    assert app.text_input(key="noise_to_signal_goal").value == goal
+    assert "Please enter a learning goal or decision." not in "\n".join(
+        str(item.value) for item in app.error
+    )
+
+
+def test_noise_to_signal_new_search_submits_first_replacement_immediately():
+    query_a = "Should I learn LangGraph or RAG evaluation?"
+    query_b = "Kubernetes for AI Engineer?"
+    thread_ids = []
+
+    def start_new_search(app):
+        thread_ids.append(app.session_state["noise_to_signal_thread_id"])
+        app.button(key="noise_to_signal_start_new").click().run(
+            timeout=APP_TEST_TIMEOUT_SECONDS
+        )
+        thread_ids.append(app.session_state["noise_to_signal_thread_id"])
+
+    app, graph_stub = _run_noise_to_signal_app_sequence(
+        [
+            (query_a, _single_focus_result(query_a), start_new_search),
+            (query_b, _single_focus_result(query_b), None),
+        ],
+        memory_store=RecordingMemoryStore(),
+        submit_with_current_input=True,
+    )
+
+    assert not app.exception
+    assert thread_ids[0] != thread_ids[1]
+    assert [call[0][0] for call in graph_stub.calls] == [query_a, query_b]
+    assert graph_stub.calls[1][1]["thread_id"] == thread_ids[1]
+    assert app.session_state["noise_to_signal_last_goal"] == query_b
+
+
+def test_noise_to_signal_same_query_can_be_submitted_twice():
+    goal = "Explain LangGraph"
+    app, graph_stub = _run_noise_to_signal_app_sequence(
+        [
+            (goal, _single_focus_result(goal), None),
+            (goal, _single_focus_result(goal), None),
+        ],
+        memory_store=RecordingMemoryStore(),
+        submit_with_current_input=True,
+    )
+
+    assert not app.exception
+    assert [call[0][0] for call in graph_stub.calls] == [goal, goal]
+    assert app.session_state["noise_to_signal_last_goal"] == goal
+
+
+def test_noise_to_signal_whitespace_only_submission_stays_invalid():
+    app, graph_stub = _run_noise_to_signal_app_sequence(
+        [("   ", _single_focus_result("unused"), None)],
+        memory_store=RecordingMemoryStore(),
+        submit_with_current_input=True,
+    )
+
+    assert not app.exception
+    assert graph_stub.calls == []
+    assert "Please enter a learning goal or decision." in "\n".join(
+        str(item.value) for item in app.error
+    )
+    assert app.session_state["noise_to_signal_last_goal"] == ""
+    assert app.session_state["noise_to_signal_last_decision"] is None
 
 
 def _guided_intake_result(goal, entry_point):
@@ -519,7 +647,7 @@ def test_noise_to_signal_home_renders_collapsed_examples_control():
     assert "Explain LangGraph" not in button_labels
 
 
-def test_noise_to_signal_main_search_has_one_scoped_enter_controller():
+def test_noise_to_signal_main_search_uses_one_native_submission_form():
     for intro_complete in (False, True):
         app = AppTest.from_file("app.py")
         if intro_complete:
@@ -530,8 +658,8 @@ def test_noise_to_signal_main_search_has_one_scoped_enter_controller():
         goal_input = app.text_input(key="noise_to_signal_goal")
         submit_button = app.button(key="generate_noise_to_signal_decision")
         assert not app.exception
-        assert goal_input.form_id == ""
-        assert submit_button.form_id == ""
+        assert goal_input.form_id
+        assert submit_button.form_id == goal_input.form_id
         assert submit_button.label == "↵"
         assert not submit_button.shortcut
         assert submit_button.help == "Submit learning decision"
@@ -542,20 +670,15 @@ def test_noise_to_signal_main_search_has_one_scoped_enter_controller():
         cognivia_app._render_noise_to_signal_control_accessibility
     )
     styles_source = getsource(cognivia_app._render_noise_to_signal_styles)
-    assert "goal = st.text_input(" in home_source
-    assert "submitted = st.button(" in home_source
-    assert "st.form(" not in home_source
-    assert "st.form_submit_button(" not in home_source
+    assert "submission_form = st.form(" in home_source
+    assert "goal = submission_form.text_input(" in home_source
+    assert "submitted = submission_form.form_submit_button(" in home_source
+    assert '"noise_to_signal_search_form"' in home_source
     assert 'shortcut="Enter"' not in home_source
     assert "on_change=" not in home_source
     assert home_source.count("_submit_noise_to_signal_goal(goal)") == 1
-    assert 'event.key !== "Enter"' in control_source
-    assert (
-        '".st-key-noise_to_signal_search_shell input"'
-        in control_source
-    )
-    assert "eventTarget.matches(searchInputSelector)" in control_source
-    assert "submitButton.click()" in control_source
+    assert 'appDocument.addEventListener("keydown"' not in control_source
+    assert "submitButton.click()" not in control_source
     assert (
         "div.st-key-generate_noise_to_signal_decision button kbd"
         in styles_source
@@ -574,7 +697,7 @@ def test_guided_intake_and_reflection_fields_are_outside_main_search_route():
     )
 
     assert not guided_app.exception
-    assert guided_app.text_input(key="noise_to_signal_goal").form_id == ""
+    assert guided_app.text_input(key="noise_to_signal_goal").form_id
     assert (
         guided_app.text_area(key="noise_to_signal_guided_current_skills").form_id
         == ""
@@ -771,9 +894,7 @@ def test_parent_document_injections_guard_access_and_clean_up_controllers():
     assert "previousController.handleSearchKeydown" in control_source
     assert "new parentWindow.MutationObserver(applyLabels)" in control_source
     assert "parentWindow[controllerKey] = {{" in control_source
-    assert 'appDocument.addEventListener("keydown", handleSearchKeydown, true)' in (
-        control_source
-    )
+    assert 'appDocument.addEventListener("keydown"' not in control_source
 
 
 def test_noise_to_signal_quick_prompt_uses_existing_query_path():
