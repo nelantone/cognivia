@@ -10,6 +10,7 @@ from langchain_core.documents import Document
 from rag.config import DEFAULT_MIN_RELEVANCE_SCORE
 from tools.noise_to_signal_graph import (
     _reasoning_items_with_full_text,
+    determine_request_shape,
     route_by_decision_status,
     run_noise_to_signal,
 )
@@ -1503,6 +1504,41 @@ def test_self_contained_comparison_replaces_previous_vague_request():
     _assert_no_internal_orchestration_text(result)
 
 
+def test_concise_skill_context_question_replaces_previous_vague_request():
+    checkpointer = MemorySaver()
+    thread_id = "noise-to-signal-concise-skill-context-test"
+    goal = "Kubernetes for AI Engineer?"
+
+    run_noise_to_signal(
+        "What should I learn next?",
+        [],
+        thread_id=thread_id,
+        checkpointer=checkpointer,
+    )
+    result = run_noise_to_signal(
+        goal,
+        [
+            Document(
+                page_content=(
+                    "Kubernetes supports deployment workflows for AI engineering "
+                    "projects when its operational tradeoffs are understood."
+                ),
+                metadata={"source": "deployment.md", "filename": "deployment.md"},
+            )
+        ],
+        thread_id=thread_id,
+        checkpointer=checkpointer,
+    )
+
+    assert result["goal"] == goal
+    assert result["decision_status"] == "single_focus"
+    assert result["selected_focus"] == "Kubernetes"
+    assert result["original_goal"] is None
+    assert result["clarification_context"] is None
+    assert result["pending_clarification"] is False
+    _assert_no_internal_orchestration_text(result)
+
+
 def test_self_contained_explanation_replaces_previous_vague_request():
     checkpointer = MemorySaver()
     thread_id = "noise-to-signal-self-contained-explanation-test"
@@ -1907,6 +1943,120 @@ def test_short_role_like_input_needs_clarification(goal):
     assert "target role" in result["recommendation"]
     assert "concrete skill, project, or learning decision" in result["recommendation"]
     assert result["selected_focus"] is None
+
+
+@pytest.mark.parametrize(
+    ("goal", "expected_focus"),
+    [
+        ("Kubernetes for AI Engineer?", "Kubernetes"),
+        ("Docker for backend developers?", "Docker"),
+        ("LangGraph for RAG evaluation?", "LangGraph"),
+        ("Python for data engineering?", "Python"),
+    ],
+)
+def test_concise_skill_to_context_questions_have_actionable_request_shape(
+    goal,
+    expected_focus,
+):
+    result = determine_request_shape({"goal": goal})
+
+    assert result["goal"] == goal
+    assert result["decision_status"] == "single_focus"
+    assert result["interaction_mode"] == "direct_decision"
+    assert result["selected_focus"] == expected_focus
+    assert result["retrieval_required"] is True
+    assert result["retrieval_query"] == goal
+    assert result["routing_source"] == "deterministic"
+
+
+@pytest.mark.parametrize(
+    ("goal", "expected_focus"),
+    [
+        ("Kubernetes for AI Engineer?", "Kubernetes"),
+        ("Docker for backend developers?", "Docker"),
+        ("LangGraph for RAG evaluation?", "LangGraph"),
+        ("Python for data engineering?", "Python"),
+    ],
+)
+def test_concise_skill_to_context_questions_stay_deterministic_through_graph(
+    goal,
+    expected_focus,
+):
+    classifier = RecordingIntentClassifier(
+        result={
+            "intent": "needs_clarification",
+            "confidence": 0.9,
+            "reason": "unused",
+        }
+    )
+    docs = [
+        Document(
+            page_content=(
+                f"{expected_focus} supports a concrete AI engineering workflow "
+                "when it fits the learner's project context."
+            ),
+            metadata={"source": "skill_context.md", "filename": "skill_context.md"},
+        )
+    ]
+
+    result = run_noise_to_signal(
+        goal,
+        docs,
+        intent_classifier=classifier,
+    )
+
+    assert result["goal"] == goal
+    assert result["decision_status"] == "single_focus"
+    assert result["interaction_mode"] == "direct_decision"
+    assert result["selected_focus"] == expected_focus
+    assert result["routing_source"] == "deterministic"
+    assert result["evidence_quality"] == "contextual"
+    assert classifier.calls == []
+    assert result["decision_trace"][0] == f"User goal: {goal}"
+    assert f"Interpreted focus: {expected_focus}" in result["decision_trace"]
+    assert "concrete skill" not in result["recommendation"].casefold()
+
+
+@pytest.mark.parametrize(
+    "goal",
+    [
+        "Advice for AI Engineer?",
+        "Is Kubernetes for AI Engineer?",
+        "Kubernetes for my role?",
+        "Kubernetes for what role?",
+        "Kubernetes for my next project?",
+        "Tools for data engineering?",
+    ],
+)
+def test_concise_for_questions_require_signal_on_both_sides(goal):
+    result = determine_request_shape({"goal": goal})
+
+    assert result["goal"] == goal
+    assert result["decision_status"] == "needs_clarification"
+    assert result["selected_focus"] is None
+    assert result["retrieval_required"] is False
+
+
+@pytest.mark.parametrize(
+    ("goal", "expected_status", "expected_mode"),
+    [
+        ("AI Engineer?", "needs_clarification", "clarification"),
+        ("What should I learn?", "needs_clarification", "clarification"),
+        ("Help me choose a career.", "single_focus", "direct_decision"),
+        ("I want to improve my skills.", "insufficient_evidence", "direct_decision"),
+    ],
+)
+def test_other_broad_inputs_keep_existing_routes(
+    goal,
+    expected_status,
+    expected_mode,
+):
+    result = run_noise_to_signal(goal, [])
+
+    assert result["goal"] == goal
+    assert result["decision_status"] == expected_status
+    assert result["interaction_mode"] == expected_mode
+    assert result["routing_source"] == "deterministic"
 
 
 def test_standalone_technology_remains_single_focus():

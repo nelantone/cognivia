@@ -31,6 +31,7 @@ from tools.noise_to_signal_evidence import (
 )
 from tools.study_plan import (
     _clean_text,
+    _derive_concise_skill_context_focus,
     _is_informational_question,
     _rank_decision_options,
     _select_decision_focus,
@@ -281,6 +282,9 @@ def _is_context_fragment(goal: str) -> bool:
 
 
 def _is_context_only_input(goal: str) -> bool:
+    if _derive_concise_skill_context_focus(goal):
+        return False
+
     return (
         _is_standalone_proficiency_level(goal)
         or _is_short_role_like_input(goal)
