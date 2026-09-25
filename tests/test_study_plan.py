@@ -215,6 +215,27 @@ def test_noise_to_signal_decision_uses_single_focus_for_explicit_topic():
 
 
 @pytest.mark.parametrize(
+    ("goal", "expected_focus"),
+    [
+        ("Kubernetes for AI Engineer?", "Kubernetes"),
+        ("Docker for backend developers?", "Docker"),
+        ("LangGraph for RAG evaluation?", "LangGraph"),
+        ("Python for data engineering?", "Python"),
+    ],
+)
+def test_noise_to_signal_decision_recognizes_concise_skill_context_questions(
+    goal,
+    expected_focus,
+):
+    decision = build_noise_to_signal_decision(goal, [])
+
+    assert decision["goal"] == goal
+    assert decision["decision_status"] == "single_focus"
+    assert decision["interaction_mode"] == "direct_decision"
+    assert decision["selected_focus"] == expected_focus
+
+
+@pytest.mark.parametrize(
     "goal",
     [
         "I feel stupid about transformers",

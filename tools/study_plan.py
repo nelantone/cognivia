@@ -94,11 +94,92 @@ INFORMATIONAL_GOAL_PATTERNS = (
     re.compile(r"\bsummarize\s+the\s+evidence\s+about\b", re.IGNORECASE),
     re.compile(r"\baccording\s+to\s+the\s+report,\s+what\b", re.IGNORECASE),
 )
+CONCISE_SKILL_CONTEXT_PATTERN = re.compile(
+    r"^(?P<focus>[^?]+?)\s+for\s+(?P<context>[^?]+?)\s*\?$",
+    re.IGNORECASE,
+)
+CONCISE_SKILL_CONTEXT_REQUEST_PREFIX = re.compile(
+    r"^(?:are|can|could|did|do|does|help|how|i|is|should|we|what|which|why|will|would)\b",
+    re.IGNORECASE,
+)
+CONCISE_SKILL_CONTEXT_NON_SIGNAL_TERMS = {
+    "a",
+    "advice",
+    "an",
+    "any",
+    "career",
+    "current",
+    "for",
+    "future",
+    "goal",
+    "guidance",
+    "help",
+    "job",
+    "me",
+    "my",
+    "new",
+    "next",
+    "objective",
+    "our",
+    "project",
+    "role",
+    "skill",
+    "skills",
+    "something",
+    "the",
+    "their",
+    "thing",
+    "things",
+    "this",
+    "tool",
+    "tools",
+    "us",
+    "what",
+    "where",
+    "which",
+    "who",
+    "why",
+    "work",
+    "your",
+}
 
 
 def _clean_text(value):
     """Collapse whitespace so evidence previews are safe to display."""
     return " ".join(str(value or "").split())
+
+
+def _derive_concise_skill_context_focus(goal):
+    """Return the subject in a concise ``subject for context?`` question."""
+    clean_goal = _clean_text(goal)
+    match = CONCISE_SKILL_CONTEXT_PATTERN.fullmatch(clean_goal)
+    if not match:
+        return None
+
+    focus = _clean_text(match.group("focus")).strip(" .?!")
+    context = _clean_text(match.group("context")).strip(" .?!")
+    if CONCISE_SKILL_CONTEXT_REQUEST_PREFIX.search(focus):
+        return None
+
+    focus_terms = re.findall(r"[a-z0-9]+", focus.casefold())
+    context_terms = re.findall(r"[a-z0-9]+", context.casefold())
+    if not 1 <= len(focus_terms) <= 6 or not 2 <= len(context_terms) <= 10:
+        return None
+
+    meaningful_focus_terms = [
+        term
+        for term in focus_terms
+        if term not in CONCISE_SKILL_CONTEXT_NON_SIGNAL_TERMS
+    ]
+    meaningful_context_terms = [
+        term
+        for term in context_terms
+        if term not in CONCISE_SKILL_CONTEXT_NON_SIGNAL_TERMS
+    ]
+    if not meaningful_focus_terms or len(meaningful_context_terms) < 2:
+        return None
+
+    return focus
 
 
 def _truncate_at_word_boundary(text, max_chars):
@@ -612,6 +693,10 @@ def _derive_single_focus(goal):
 
     if guided_intake_entry_point_for_goal(clean_goal):
         return None
+
+    concise_focus = _derive_concise_skill_context_focus(clean_goal)
+    if concise_focus:
+        return _truncate_at_word_boundary(concise_focus, 90)
 
     for focus_pattern in SINGLE_FOCUS_PATTERNS:
         focus_match = focus_pattern.search(clean_goal)
