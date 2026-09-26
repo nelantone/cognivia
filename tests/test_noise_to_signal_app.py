@@ -16,6 +16,7 @@ import openrouter_client
 import pytest
 import streamlit as st
 from PIL import Image
+from streamlit.runtime.scriptrunner_utils.script_run_context import ScriptRunContext
 from streamlit.testing.v1 import AppTest
 
 from tools.learning_direction import generate_learning_direction_schemas
@@ -663,6 +664,13 @@ def test_noise_to_signal_main_search_uses_one_native_submission_form():
         assert submit_button.label == "↵"
         assert not submit_button.shortcut
         assert submit_button.help == "Submit learning decision"
+        form = app.get("form")[0]
+        assert form.proto.form.form_id == goal_input.form_id
+        assert form.proto.form.enter_to_submit is True
+        assert [child.type for child in form.children.values()] == [
+            "text_input", "button",
+        ]
+        assert submit_button.proto.is_form_submitter is True
 
     cognivia_app = import_module("app")
     home_source = getsource(cognivia_app._render_noise_to_signal_home)
@@ -684,6 +692,105 @@ def test_noise_to_signal_main_search_uses_one_native_submission_form():
         in styles_source
     )
     assert "display: none !important" in styles_source
+
+
+@pytest.mark.parametrize("intro_complete", [False, True])
+def test_noise_to_signal_form_deltas_are_contiguous_and_complete(intro_complete):
+    """Prove server structure/order, not browser paint or React registration."""
+    messages = []
+    original_enqueue = ScriptRunContext.enqueue
+
+    def record_enqueue(context, message):
+        if message.HasField("delta"):
+            messages.append((tuple(message.metadata.delta_path), message.delta))
+        return original_enqueue(context, message)
+
+    app = AppTest.from_file("app.py")
+    if intro_complete:
+        app.session_state["noise_to_signal_intro_state"] = "complete"
+    else:
+        app.query_params["intro"] = "1"
+    with patch.object(ScriptRunContext, "enqueue", record_enqueue):
+        app.run(timeout=APP_TEST_TIMEOUT_SECONDS)
+
+    assert not app.exception
+    forms = [
+        (index, path, delta.add_block.form)
+        for index, (path, delta) in enumerate(messages)
+        if delta.HasField("add_block") and delta.add_block.HasField("form")
+    ]
+    assert len(forms) == 1
+    index, form_path, form = forms[0]
+    assert form.form_id == "noise_to_signal_search_form"
+    assert form.enter_to_submit is True
+    input_path, input_delta = messages[index + 1]
+    submit_path, submit_delta = messages[index + 2]
+    assert input_path == (*form_path, 0)
+    assert submit_path == (*form_path, 1)
+    assert input_delta.new_element.text_input.form_id == form.form_id
+    assert submit_delta.new_element.button.form_id == form.form_id
+    assert submit_delta.new_element.button.is_form_submitter is True
+    assert not app.error
+
+    markdown = [
+        delta.new_element.markdown.body
+        for _, delta in messages
+        if delta.HasField("new_element")
+        and delta.new_element.HasField("markdown")
+    ]
+    styles_index = next(i for i, body in enumerate(markdown) if "--nts-bg:" in body)
+    heading_index = next(
+        i for i, body in enumerate(markdown) if '<h1 class="nts-home-question">' in body
+    )
+    assert styles_index < heading_index
+    assert app.session_state["noise_to_signal_intro_state"] == "complete"
+    if intro_complete:
+        assert not any('id="nts-intro-video"' in body for body in markdown)
+    else:
+        assert 'id="cognivia-startup-intro-cover"' in markdown[0]
+        intro_index = next(
+            i for i, body in enumerate(markdown) if 'id="nts-intro-video"' in body
+        )
+        assert styles_index < intro_index < heading_index
+
+
+def test_noise_to_signal_form_readiness_css_is_scoped_to_native_controls():
+    """Check the CSS contract; AppTest cannot evaluate selectors or paint frames."""
+    app = AppTest.from_file("app.py")
+    app.session_state["noise_to_signal_intro_state"] = "complete"
+    app.run(timeout=APP_TEST_TIMEOUT_SECONDS)
+    assert not app.exception
+    css = next(str(item.value) for item in app.markdown if "--nts-bg:" in str(item.value))
+    css = re.sub(r"/\*.*?\*/", "", css, flags=re.DOTALL)
+    rules = re.findall(r"([^{}]+)\{([^{}]+)\}", css)
+    readiness_rules = [
+        (" ".join(selector.split()), body.strip())
+        for selector, body in rules
+        if "st-key-noise_to_signal_search_shell:not(" in selector
+    ]
+    assert len(readiness_rules) == 1
+    selector, body = readiness_rules[0]
+    assert body == "visibility: hidden;"
+    assert selector.split(",") == [
+        "div.st-key-noise_to_signal_search_shell:not( "
+        ":has(.st-key-noise_to_signal_goal input) )",
+        " div.st-key-noise_to_signal_search_shell:not( "
+        ":has(.st-key-generate_noise_to_signal_decision "
+        '[data-testid="stFormSubmitButton"] button) )',
+    ]
+    alert_rules = [
+        (" ".join(selector.split()), body.strip())
+        for selector, body in rules
+        if 'stAlert' in selector
+    ]
+    assert alert_rules == [(
+        'div.st-key-noise_to_signal_search_shell [data-testid="stForm"]:has( '
+        '.st-key-noise_to_signal_goal input ):has( '
+        '.st-key-generate_noise_to_signal_decision '
+        '[data-testid="stFormSubmitButton"] button ) '
+        '> div:has(> [data-testid="stAlert"])',
+        "display: none;",
+    )]
 
 
 def test_guided_intake_and_reflection_fields_are_outside_main_search_route():
