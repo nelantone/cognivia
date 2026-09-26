@@ -179,6 +179,32 @@ def _render_noise_to_signal_styles() -> None:
             margin: 0 auto;
         }}
 
+        /* Streamlit 1.56 lazy-loads form controls, then registers the submit
+           button in an effect. Keep this search shell unpainted until both
+           native controls mount; visibility preserves their layout and mount. */
+        div.st-key-noise_to_signal_search_shell:not(
+            :has(.st-key-noise_to_signal_goal input)
+        ),
+        div.st-key-noise_to_signal_search_shell:not(
+            :has(.st-key-generate_noise_to_signal_decision
+                 [data-testid="stFormSubmitButton"] button)
+        ) {{
+            visibility: hidden;
+        }}
+
+        /* The form is structurally valid once both controls exist. Only hide
+           its direct missing-submit diagnostic while registration catches up.
+           App errors are element containers inside the form's child block,
+           or outside this form, and cannot match this direct-child selector. */
+        div.st-key-noise_to_signal_search_shell [data-testid="stForm"]:has(
+            .st-key-noise_to_signal_goal input
+        ):has(
+            .st-key-generate_noise_to_signal_decision
+            [data-testid="stFormSubmitButton"] button
+        ) > div:has(> [data-testid="stAlert"]) {{
+            display: none;
+        }}
+
         div.st-key-noise_to_signal_landing_card div[data-baseweb="input"],
         div.st-key-noise_to_signal_landing_card div[data-testid="stTextInputRootElement"],
         div.st-key-noise_to_signal_landing_card div[data-baseweb="base-input"] {{
