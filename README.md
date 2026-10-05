@@ -99,6 +99,10 @@ notes, and plan exports.
 The graph is bounded: one reformulation and one retry are allowed before the
 workflow terminates.
 
+> **Example:** “I don’t know what to learn next” → guided intake → goal
+> clarification → evidence retrieval → support assessment → a learning
+> direction and next step.
+
 ## Project Status
 
 Cognivia is a functional MVP with its core decision workflow, evidence-aware
@@ -127,36 +131,29 @@ maintained broader roadmap.
 
 Implemented in the current repository:
 
-- a Streamlit application with Noise-to-Signal Agent, AI Skill Compass, and
-  Interview Coach modes;
-- guided intake, direct-query routing, quick prompts, Focus Mode, and new-search
-  reset behavior;
-- bounded LangGraph orchestration with explicit answer, clarification, plan,
-  comparison, and insufficient-evidence outcomes;
-- recursive Markdown/PDF loading, token-aware chunking, heading and provenance
-  metadata, local Qdrant retrieval, relevance filtering, and direct-support
-  assessment;
-- selectable learning paths, next-step guidance, Study notes, and Markdown or
-  JSON exports, including a full learning-plan Markdown export;
-- explicit `offline`, `openai`, and `openrouter` provider modes; and
-- an optional append-only PostgreSQL learner-memory foundation with a null
-  fallback when durable storage is not configured.
+- Streamlit modes for Noise-to-Signal, AI Skill Compass, and Interview Coach,
+  with guided or direct intake, quick prompts, Focus Mode, and search reset;
+- bounded LangGraph routing with answer, clarification, plan, comparison, and
+  insufficient-evidence outcomes;
+- Markdown/PDF ingestion, provenance-aware chunking, local Qdrant retrieval,
+  relevance filtering, and direct-support assessment;
+- learning paths, next-step guidance, Study notes, and Markdown or JSON
+  exports; and
+- `offline`, `openai`, and `openrouter` provider modes, plus optional
+  append-only PostgreSQL learner memory with a null fallback.
 
 Important limits:
 
-- Offline mode demonstrates local UI and deterministic workflow paths, but it
-  is not provider-backed RAG and cannot create or query the embedding index.
-- Provider capabilities and behavior are not equivalent across configurations.
-- Retrieval relevance does not prove direct support, and Cognivia does not
-  eliminate hallucinations or guarantee factual certainty.
-- The bundled corpus is curated and limited; legitimate questions can produce
-  an insufficient-evidence outcome.
-- Local Qdrant and the current memory foundation are suitable for local
-  development, not proof of production-grade index integrity or multi-user
-  persistence.
+- Offline mode supports local UI and deterministic workflows, but cannot create
+  or query the provider-backed embedding index.
+- Provider capabilities differ, and live provider behavior has not been
+  verified in this validation pass.
+- Retrieval relevance does not prove direct support or factual certainty; the
+  curated corpus is limited and can yield insufficient evidence.
+- Local Qdrant and the memory foundation support local development, not
+  production-grade index integrity or multi-user persistence.
 - Production hosting, authentication, authorization, privacy isolation,
-  backups, rate limiting, scalability, and deployment hardening are not
-  claimed.
+  backups, rate limiting, scalability, and hardening are not claimed.
 
 ## Run locally
 
@@ -200,25 +197,40 @@ No evaluation score is claimed here.
 ## Architecture
 
 ```text
-Streamlit UI
-    |
-    v
-Application graph ──> request shaping / routing
-    |                         |
-    v                         v
-Local RAG                 provider boundary
-    |
-    v
-Markdown/PDF knowledge base
-
-Optional PostgreSQL memory sits behind the memory-store boundary.
+User goal
+    ↓
+Guided intake / request shaping
+    ↓
+Bounded LangGraph routing
+    ↓
+Retrieval decision
+    ↓
+RAG / local Qdrant (when needed)
+    ↓
+Evidence relevance
+    ↓
+Direct-support assessment
+    ↓
+Recommendation / clarification / insufficient evidence
+    ↓
+Learning path / reflection / export
 ```
+
+Provider access, retrieval infrastructure, and optional PostgreSQL memory sit
+behind explicit boundaries.
 
 Presentation, orchestration, retrieval, provider access, memory, persistence,
 input hygiene, and evaluation are represented by distinct modules. `app.py`
 remains the Streamlit composition root and still coordinates some workflow,
 export, and persistence concerns. See
 [`docs/architecture.md`](docs/architecture.md) for the verified component map.
+
+## Engineering trade-offs
+
+- Streamlit favors fast product iteration over a richer multi-user frontend.
+- Local Qdrant favors reproducible development over production-scale retrieval.
+- Bounded routing favors inspectability and failure control over agent autonomy.
+- Curated evidence improves traceability while intentionally limiting coverage.
 
 ## Documentation map
 
