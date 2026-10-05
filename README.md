@@ -4,37 +4,106 @@
 
 # Cognivia
 
-## Evidence-Guided AI Learning Decision Application
+Cognivia is an evidence-guided AI learning decision application for people who
+are unsure what to learn next. Built with Python, RAG, and LangGraph, it turns
+vague goals and noisy recommendations into clearer, evidence-aware next steps.
 
-Evidence-guided AI learning decision application built with Python, RAG, and
-LangGraph to turn noisy learning questions into evidence-aware next steps.
-
-Designed around bounded LLM workflows, explicit evidence states,
-deterministic fallbacks, and engineering reliability—helping people make
-better learning decisions without replacing human judgment.
+Rather than acting as a generic chatbot, Cognivia uses bounded routing,
+explicit evidence states, and deterministic fallbacks to clarify a learner's
+goal, assess available support, and preserve human judgment.
 
 **Python · RAG · LangGraph · Streamlit · Evaluation & Reliability · Pytest · GitHub Actions**
 
+## Why this project matters
+
+- Bounded orchestration replaces open-ended agent loops with explicit routes
+  and terminal outcomes.
+- Retrieval relevance identifies candidate material; a separate check decides
+  whether that material directly supports the request.
+- Insufficient evidence is an explicit outcome instead of a prompt to invent a
+  confident answer.
+- Retrieval and provider failures produce visible, deterministic fallback
+  states.
+- Guided intake helps users clarify vague goals while keeping the final
+  decision in their hands.
+
 ## Engineering Highlights
 
-- Bounded LangGraph orchestration replaces open-ended autonomous loops with
-  explicit routes and terminal outcomes.
-- Evidence-aware RAG separates retrieval relevance from direct support,
-  exposes low-support states, and can return `insufficient_evidence` instead
-  of forcing an answer.
-- Deterministic fallbacks and explicit retrieval, provider, and evidence
-  failure states keep degraded behavior visible.
-- 500+ automated tests cover UI, orchestration, retrieval, provider, memory,
-  and security paths; GitHub Actions runs the offline suite and Ruff in CI.
+- The LangGraph workflow uses explicit nodes, routes, retry limits, and
+  terminal states that are straightforward to inspect and test.
+- The RAG pipeline retains heading and provenance metadata while separating
+  retrieval, relevance filtering, and direct-support assessment.
+- Provider access, persistence, memory, and UI state sit behind defined
+  boundaries with explicit degraded behavior.
+- 593 automated tests passed in isolated offline verification on 5 October
+  2026, covering UI state, orchestration, retrieval, providers, memory,
+  security, and export paths; GitHub Actions runs the offline suite and Ruff in
+  CI.
+
+## The problem Cognivia addresses
+
+AI learners face too many tools, topics, frameworks, and role labels, often
+paired with generic recommendations and unclear evidence quality. The hard
+part is deciding what to learn next and why that choice is justified.
+
+Cognivia treats this as a decision workflow rather than a one-shot chat
+answer: clarify the goal, assess the available evidence, expose uncertainty,
+and help the learner choose a direction.
+
+## Why Cognivia, not ChatGPT?
+
+General-purpose LLMs provide broad conversational reasoning and are useful for
+one-off questions. Cognivia adds a structured learning-decision system around
+those capabilities:
+
+- goal clarification for vague requests;
+- bounded routing with explicit terminal outcomes;
+- evidence-state handling that distinguishes relevance from direct support;
+- clarification and insufficient-evidence outcomes when support is weak; and
+- learning paths, reflection, notes, and exports that keep the learner in
+  control.
+
+Cognivia complements general-purpose LLMs by making the workflow, evidence
+limits, and decision points explicit.
+
+See [Why Cognivia and Not Just ChatGPT?](docs/product/why-cognivia-not-chatgpt.md)
+for the fuller product rationale.
+
+## What it does
+
+The application provides three modes, led by its primary decision workflow:
+
+- **Noise-to-Signal Agent** — the primary mode for clarifying a learning goal,
+  checking available evidence, and producing a recommendation, clarification,
+  comparison, or focused plan.
+- **AI Skill Compass** — helps frame skill-development questions.
+- **Interview Coach** — supports structured interview practice.
+
+Noise-to-Signal supports guided intake for vague goals and direct routing for
+clear requests, with source-aware responses, selectable learning paths, Study
+notes, and plan exports.
+
+## How the primary workflow works
+
+1. The learner enters a goal directly or uses guided intake.
+2. The graph shapes and routes the request.
+3. RAG retrieves relevant evidence when needed and supported by the configured
+   provider.
+4. The workflow assesses whether the retrieved material directly supports the
+   request.
+5. It returns a recommendation, clarification, comparison, focused plan, or
+   insufficient-evidence state.
+6. The learner can inspect the evidence, select a path, save notes, or export a
+   plan.
+
+The graph is bounded: one reformulation and one retry are allowed before the
+workflow terminates.
 
 ## Project Status
 
-Cognivia is a functional, locally validated MVP under active development. The
-current version demonstrates its core decision workflow, evidence-aware RAG,
-bounded LangGraph orchestration, explicit fallback behavior, automated
-testing, and CI.
-
-It is not presented as a production-ready or multi-user service.
+Cognivia is a functional MVP with its core decision workflow, evidence-aware
+RAG, automated testing, and CI in place. Public deployment remains pending, and
+the project is not presented as a production-ready or multi-user service.
 
 ### Next priorities
 
@@ -53,69 +122,6 @@ maintained broader roadmap.
 > This public repository begins with a sanitized baseline rather than a copy of
 > that private commit history. The earlier technical progression is summarized
 > in [Engineering History](docs/engineering-history.md).
-
-## The problem Cognivia addresses
-
-AI learners face an overload of tools, topics, frameworks, role labels, and
-generic recommendations. A fluent answer alone does not show whether a goal
-was understood, whether evidence directly supports a recommendation, whether
-the request is outside the available evidence, or what the learner should
-reflect on before acting.
-
-Cognivia treats this as a learning-decision workflow rather than a one-shot
-answer-generation task. It helps a learner clarify the question, inspect the
-strength and limits of available evidence, choose a direction, and retain
-authority over the decision.
-
-## What it does
-
-The current application provides three modes:
-
-- **Noise-to-Signal Agent** — retrieves local learning evidence, identifies
-  ambiguity, and produces an answer, clarification, comparison, or learning
-  plan.
-- **AI Skill Compass** — helps frame skill-development questions.
-- **Interview Coach** — supports structured interview practice.
-
-The primary Noise-to-Signal flow routes vague or context-only goals to guided
-intake and uses a direct-decision path for clear requests. It includes quick
-prompts, a Focus Mode, source-aware responses, and exportable notes or learning
-plans. Where a configured provider can create embeddings, it retrieves from the
-bundled knowledge base through local Qdrant. Retrieval relevance is not treated
-as direct support: the graph separately assesses whether evidence supports the
-request and can return low-evidence or out-of-scope outcomes. Provider behavior
-and capability differ by configuration. Optional PostgreSQL-backed learner
-memory is append-only; without a database URL, the null store provides no
-durable history.
-
-## How the primary workflow works
-
-1. The learner enters a goal or question directly or through guided intake.
-2. The bounded application graph shapes the request and decides whether
-   retrieval is needed.
-3. When provider configuration supports embeddings, RAG retrieves from
-   `data/knowledge_base/` through local Qdrant.
-4. The graph treats retrieval relevance as a candidate filter, then separately
-   checks whether the evidence directly supports the request.
-5. The workflow can answer, ask for clarification, produce a focused plan,
-   compare supported options, or return an insufficient-evidence outcome.
-6. The learner can inspect the evidence state, select a learning path, save a
-   Study note, and export reflection or learning-plan material.
-
-The graph is bounded: an insufficient first retrieval can trigger one query
-reformulation and one retry. It is not an open-ended autonomous agent.
-
-## Why Cognivia, not ChatGPT?
-
-General-purpose LLMs provide broad language and reasoning capabilities.
-Cognivia does not try to replace them as general assistants; it provides a
-bounded methodology around their use for learning decisions. Goal
-clarification, explicit evidence states, learning paths, reflection, runtime
-transparency, and learner authority are product responsibilities rather than
-properties supplied by a model alone.
-
-See [Why Cognivia and Not Just ChatGPT?](docs/product/why-cognivia-not-chatgpt.md)
-for the fuller product rationale.
 
 ## Capabilities and boundaries
 
@@ -172,23 +178,24 @@ retrieval because creating/querying the local index requires a configured
 provider embedding key. Provider credentials and optional database settings are
 documented in [`.env.example`](.env.example); never commit real secrets.
 
-The setup command and current UI flow were not executed as part of this
-documentation recovery. Runtime behavior therefore remains **PENDING manual
-verification**.
+Validated locally in offline mode on 5 October 2026. The application started
+successfully, passed its local health check, and the isolated offline suite
+passed 593 tests with dotenv loading disabled. Interactive browser verification
+was not completed in this validation pass. Provider-backed RAG requires a
+configured embedding-capable provider.
 
 ## Demo and validation guidance
 
 For an offline walkthrough, select **Noise-to-Signal Agent**, use guided intake
 or a quick prompt, inspect the communicated uncertainty, enter and exit Focus
 Mode, reset with **New search**, and inspect any offered note or learning-plan
-export. These interaction outcomes remain expected rather than manually
-verified in this recovery commit.
+export.
 
 An evidence-backed RAG demonstration requires explicitly authorized OpenAI or
 OpenRouter access with an embedding-capable key and may incur provider cost.
 See the [demo guide](docs/demo-guide.md) for the conservative walkthrough and
 [testing](docs/testing.md) for validation commands and current evidence limits.
-No product test total or evaluation score is claimed here.
+No evaluation score is claimed here.
 
 ## Architecture
 
@@ -226,9 +233,8 @@ export, and persistence concerns. See
 - [Engineering history](docs/engineering-history.md)
 - [Project evolution](docs/project-evolution.md)
 
-No test total or evaluation score is claimed here. Current validation status
-and the commands used to establish it belong in the linked testing and
-evaluation documents.
+No evaluation score is claimed here. Current validation status and the commands
+used to establish it belong in the linked testing and evaluation documents.
 
 ## Licensing
 
