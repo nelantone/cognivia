@@ -254,8 +254,8 @@ export, and persistence concerns. See
 > [Engineering history](docs/engineering-history.md) for the technical
 > progression.
 
-No evaluation score is claimed here. Current validation status and the commands
-used to establish it belong in the linked testing and evaluation documents.
+Current validation status and the commands used to establish it belong in the
+linked testing and evaluation documents.
 
 ## Licensing
 
