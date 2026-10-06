@@ -341,6 +341,24 @@ def test_agentic_rag_study_next_routes_to_guided_intake_without_retrieval():
     assert result["study_plan"] is None
 
 
+def test_agentic_rag_context_rich_learning_next_goal_retrieves():
+    goal = (
+        "I am targeting AI Engineer roles and building a RAG portfolio project. "
+        "What should I learn next?"
+    )
+    retriever = RecordingRetriever(results=[[]])
+
+    result = run_noise_to_signal(goal, retriever=retriever)
+
+    assert retriever.calls
+    assert retriever.calls[0]["query"] == goal
+    assert result["decision_status"] == "single_focus"
+    assert result["needs_clarification"] is False
+    assert result["interaction_mode"] == "direct_decision"
+    assert result["retrieval_attempts"] == len(retriever.calls)
+    assert "Retrieval skipped: more context required." not in result["decision_trace"]
+
+
 def test_agentic_rag_first_retrieval_can_be_sufficient():
     retriever = RecordingRetriever(
         results=[

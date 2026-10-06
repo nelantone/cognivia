@@ -70,6 +70,22 @@ VAGUE_GOAL_PATTERNS = (
     re.compile(r"\bwhat\s+should\s+i\s+learn\s+next\b", re.IGNORECASE),
     re.compile(r"\bwhat\s+should\s+i\s+(?:study|focus\s+on)\b", re.IGNORECASE),
 )
+NEXT_STEP_CONTEXT_PATTERNS = (
+    re.compile(
+        r"\b(?:targeting|aiming\s+for|pursuing)\s+(?:an?\s+)?[^.?!]{2,}",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:building|creating|developing|working\s+on)\s+(?:an?\s+)?[^.?!]{2,}"
+        r"\b(?:app|application|portfolio|project)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:i\s+(?:am\s+learning|know|use|have\s+experience\s+with)|"
+        r"my\s+(?:current\s+)?skills?\s+(?:are|include))\s+[^.?!]{2,}",
+        re.IGNORECASE,
+    ),
+)
 GUIDED_INTAKE_LOST_ENTRY_POINT = "I feel lost and need direction"
 GUIDED_INTAKE_NEXT_STEP_ENTRY_POINT = "I want to choose what to learn next"
 GUIDED_INTAKE_LOST_PATTERNS = (
@@ -691,6 +707,10 @@ def _summarize_reasoning_evidence(retrieved_docs):
 def _derive_single_focus(goal):
     clean_goal = _clean_text(goal)
 
+    next_step_focus = _derive_contextualized_next_step_focus(clean_goal)
+    if next_step_focus:
+        return _truncate_at_word_boundary(next_step_focus, 90)
+
     if guided_intake_entry_point_for_goal(clean_goal):
         return None
 
@@ -719,6 +739,30 @@ def _is_informational_question(goal):
     return any(pattern.search(clean_goal) for pattern in INFORMATIONAL_GOAL_PATTERNS)
 
 
+def _derive_contextualized_next_step_focus(goal):
+    """Return useful context surrounding an otherwise vague next-step phrase."""
+    clean_goal = _clean_text(goal)
+    vague_match = None
+    for pattern in VAGUE_GOAL_PATTERNS:
+        vague_match = pattern.search(clean_goal)
+        if vague_match:
+            break
+
+    if not vague_match:
+        return None
+
+    context = _clean_text(
+        f"{clean_goal[:vague_match.start()]} {clean_goal[vague_match.end():]}"
+    ).strip(" .?!")
+    if not context:
+        return None
+
+    if not any(pattern.search(context) for pattern in NEXT_STEP_CONTEXT_PATTERNS):
+        return None
+
+    return context
+
+
 def guided_intake_entry_point_for_goal(goal):
     """Return the guided intake entry point for vague learning-path requests."""
     clean_goal = _clean_text(goal)
@@ -728,9 +772,13 @@ def guided_intake_entry_point_for_goal(goal):
     if any(pattern.search(clean_goal) for pattern in GUIDED_INTAKE_LOST_PATTERNS):
         return GUIDED_INTAKE_LOST_ENTRY_POINT
 
-    if any(pattern.search(clean_goal) for pattern in VAGUE_GOAL_PATTERNS) or any(
-        pattern.search(clean_goal) for pattern in LEARNING_GUIDANCE_PATTERNS
-    ):
+    has_vague_next_step_phrase = any(
+        pattern.search(clean_goal) for pattern in VAGUE_GOAL_PATTERNS
+    )
+    if (
+        has_vague_next_step_phrase
+        and not _derive_contextualized_next_step_focus(clean_goal)
+    ) or any(pattern.search(clean_goal) for pattern in LEARNING_GUIDANCE_PATTERNS):
         return GUIDED_INTAKE_NEXT_STEP_ENTRY_POINT
 
     return None

@@ -322,6 +322,23 @@ def test_guided_intake_entry_point_covers_vague_and_guidance_goals(
     assert guided_intake_entry_point_for_goal(goal) == expected_entry_point
 
 
+def test_context_rich_learning_next_goal_bypasses_guided_intake():
+    goal = (
+        "I am targeting AI Engineer roles and building a RAG portfolio project. "
+        "What should I learn next?"
+    )
+
+    decision = build_noise_to_signal_decision(goal, [])
+
+    assert guided_intake_entry_point_for_goal(goal) is None
+    assert decision["decision_status"] == "single_focus"
+    assert decision["needs_clarification"] is False
+    assert decision["interaction_mode"] == "direct_decision"
+    assert decision["selected_focus"] == (
+        "I am targeting AI Engineer roles and building a RAG portfolio project"
+    )
+
+
 def test_noise_to_signal_decision_routes_lost_learning_path_to_guided_intake():
     decision = build_noise_to_signal_decision(
         "I feel lost and want a practical AI learning path",
