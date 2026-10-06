@@ -191,6 +191,23 @@ def test_noise_to_signal_decision_uses_evidence_for_outputs():
             "Should I learn Docker or agents?",
             ["Docker", "agents"],
         ),
+        (
+            "Should I focus next on evaluation or model deployment?",
+            ["evaluation", "model deployment"],
+        ),
+        (
+            "Should I learn observability or deployment next?",
+            ["observability", "deployment"],
+        ),
+        (
+            "Should I choose retrieval evaluation or deployment?",
+            ["retrieval evaluation", "deployment"],
+        ),
+        (
+            "Given my project goals, should I focus on evaluation or "
+            "deployment, and why?",
+            ["evaluation", "deployment"],
+        ),
     ],
 )
 def test_noise_to_signal_decision_extracts_natural_question_options(
@@ -203,6 +220,20 @@ def test_noise_to_signal_decision_extracts_natural_question_options(
     assert decision["selected_focus"] is None
     assert decision["decision_status"] == "insufficient_evidence"
     assert decision["selected_focus"] != expected_options[0]
+
+
+def test_noise_to_signal_decision_extracts_exact_context_rich_comparison():
+    goal = (
+        "I’m targeting Applied AI Engineer roles and want to deploy Cognivia as a "
+        "production-ready portfolio project. I already know the basics of RAG and "
+        "LangGraph. Should I focus next on LLM evaluation or deployment, and why?"
+    )
+
+    decision = build_noise_to_signal_decision(goal, [])
+
+    assert decision["options"] == ["LLM evaluation", "deployment"]
+    assert decision["decision_status"] == "insufficient_evidence"
+    assert decision["needs_clarification"] is False
 
 
 def test_noise_to_signal_decision_uses_single_focus_for_explicit_topic():
