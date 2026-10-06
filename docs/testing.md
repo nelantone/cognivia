@@ -16,7 +16,11 @@ isolated offline suite passed 593 tests in 64.29 seconds.
 | Input and security behavior | security-focused tests under `tests/` |
 
 The passing suite exercises these surfaces through current automated coverage;
-it does not verify live provider behavior or an interactive browser walkthrough.
+it does not by itself verify live provider behavior or an interactive browser
+walkthrough. Separately, one OpenAI-backed retrieval flow was manually verified
+on 6 October 2026 with contextual evidence, three evidence items, no retrieval
+error, and a rendered Streamlit result without UI errors. Broader live-provider
+and interactive-browser behavior remains unverified.
 
 ## Validation commands
 
@@ -52,8 +56,10 @@ this public product-documentation change.
 - Offline provider and dotenv isolation: **VERIFIED**
 - Local startup: **VERIFIED**
 - Local health check: **VERIFIED**
-- Interactive browser walkthrough: **NOT COMPLETED in this validation pass**
-- Live provider behavior: **NOT VERIFIED in this validation pass**
+- Rendered Streamlit result: **VERIFIED for one OpenAI-backed retrieval flow on
+  6 October 2026; broader interactive-browser behavior remains unverified**
+- Live provider behavior: **VERIFIED for that single OpenAI-backed retrieval
+  flow; broader live-provider behavior remains unverified**
 - Evaluation cases and scores: **NOT VERIFIED; no score is claimed**
 - LangSmith isolation for the offline suite: **VERIFIED**
 

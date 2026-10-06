@@ -14,6 +14,16 @@ goal, assess available support, and preserve human judgment.
 
 **Python · RAG · LangGraph · Streamlit · Evaluation & Reliability · Pytest · GitHub Actions**
 
+## Product preview
+
+### Guided intake
+
+![Cognivia guided intake](assets/screenshots/01-guided-intake.png)
+
+### Evidence-guided recommendation
+
+![Cognivia recommendation overview](assets/screenshots/02-recommendation-overview.png)
+
 ## Why this project matters
 
 - Bounded orchestration replaces open-ended agent loops with explicit routes
@@ -50,11 +60,11 @@ Cognivia treats this as a decision workflow rather than a one-shot chat
 answer: clarify the goal, assess the available evidence, expose uncertainty,
 and help the learner choose a direction.
 
-## Why Cognivia, not ChatGPT?
+## Why Cognivia, not a general-purpose AI assistant?
 
-General-purpose LLMs provide broad conversational reasoning and are useful for
-one-off questions. Cognivia adds a structured learning-decision system around
-those capabilities:
+General-purpose AI assistants and LLMs provide broad conversational reasoning
+and are useful for one-off questions. Cognivia adds a structured
+learning-decision workflow around those capabilities:
 
 - goal clarification for vague requests;
 - bounded routing with explicit terminal outcomes;
@@ -63,10 +73,12 @@ those capabilities:
 - learning paths, reflection, notes, and exports that keep the learner in
   control.
 
-Cognivia complements general-purpose LLMs by making the workflow, evidence
-limits, and decision points explicit.
+Cognivia complements general-purpose assistants by making the workflow,
+evidence limits, and decision points explicit while keeping human judgment in
+control.
 
-See [Why Cognivia and Not Just ChatGPT?](docs/product/why-cognivia-not-chatgpt.md)
+See
+[Product rationale: Why Cognivia beyond general-purpose AI assistants](docs/product/why-cognivia-not-chatgpt.md)
 for the fuller product rationale.
 
 ## What it does
@@ -99,6 +111,10 @@ notes, and plan exports.
 The graph is bounded: one reformulation and one retry are allowed before the
 workflow terminates.
 
+> **Example:** “I don’t know what to learn next” → guided intake → goal
+> clarification → evidence retrieval → support assessment → a learning
+> direction and next step.
+
 ## Project Status
 
 Cognivia is a functional MVP with its core decision workflow, evidence-aware
@@ -118,45 +134,33 @@ These roadmap items are planned, not implemented:
 See [Future Improvements and To-do](docs/future-improvements.md) for the
 maintained broader roadmap.
 
-> **Public history:** Cognivia was initially developed in a private repository.
-> This public repository begins with a sanitized baseline rather than a copy of
-> that private commit history. The earlier technical progression is summarized
-> in [Engineering History](docs/engineering-history.md).
-
 ## Capabilities and boundaries
 
-Implemented in the current repository:
+Implemented:
 
-- a Streamlit application with Noise-to-Signal Agent, AI Skill Compass, and
-  Interview Coach modes;
-- guided intake, direct-query routing, quick prompts, Focus Mode, and new-search
-  reset behavior;
-- bounded LangGraph orchestration with explicit answer, clarification, plan,
-  comparison, and insufficient-evidence outcomes;
-- recursive Markdown/PDF loading, token-aware chunking, heading and provenance
-  metadata, local Qdrant retrieval, relevance filtering, and direct-support
-  assessment;
-- selectable learning paths, next-step guidance, Study notes, and Markdown or
-  JSON exports, including a full learning-plan Markdown export;
-- explicit `offline`, `openai`, and `openrouter` provider modes; and
-- an optional append-only PostgreSQL learner-memory foundation with a null
-  fallback when durable storage is not configured.
+- Noise-to-Signal, AI Skill Compass, and Interview Coach modes with
+  guided/direct intake, quick prompts, Focus Mode, and search reset;
+- bounded LangGraph answer, clarification, plan, comparison, and
+  insufficient-evidence routes;
+- Markdown/PDF ingestion with provenance-aware local Qdrant retrieval and
+  separate relevance/direct-support checks;
+- learning paths, next-step guidance, Study notes, and Markdown/JSON exports;
+  and
+- provider modes (`offline`, `openai`, `openrouter`) and optional append-only
+  PostgreSQL learner memory with a null fallback.
 
-Important limits:
+Limits:
 
-- Offline mode demonstrates local UI and deterministic workflow paths, but it
-  is not provider-backed RAG and cannot create or query the embedding index.
-- Provider capabilities and behavior are not equivalent across configurations.
-- Retrieval relevance does not prove direct support, and Cognivia does not
-  eliminate hallucinations or guarantee factual certainty.
-- The bundled corpus is curated and limited; legitimate questions can produce
-  an insufficient-evidence outcome.
-- Local Qdrant and the current memory foundation are suitable for local
-  development, not proof of production-grade index integrity or multi-user
-  persistence.
+- Offline mode supports local UI and deterministic workflows, but cannot
+  create/query the provider-backed embedding index.
+- Provider capabilities differ. One OpenAI-backed retrieval flow was manually
+  verified on 6 October 2026; broader live-provider behavior is not claimed.
+- Retrieval relevance does not prove direct support or certainty; the limited
+  curated corpus can yield insufficient evidence.
+- Local Qdrant and learner memory support development, not production-grade
+  index integrity or multi-user persistence.
 - Production hosting, authentication, authorization, privacy isolation,
-  backups, rate limiting, scalability, and deployment hardening are not
-  claimed.
+  backups, rate limiting, scalability, and hardening are not claimed.
 
 ## Run locally
 
@@ -180,45 +184,57 @@ documented in [`.env.example`](.env.example); never commit real secrets.
 
 Validated locally in offline mode on 5 October 2026. The application started
 successfully, passed its local health check, and the isolated offline suite
-passed 593 tests with dotenv loading disabled. Interactive browser verification
-was not completed in this validation pass. Provider-backed RAG requires a
-configured embedding-capable provider.
+passed 593 tests with dotenv loading disabled. On 6 October 2026, one
+OpenAI-backed retrieval flow and its rendered Streamlit result were manually
+verified without errors; broader live-provider behavior is not claimed.
 
 ## Demo and validation guidance
 
-For an offline walkthrough, select **Noise-to-Signal Agent**, use guided intake
-or a quick prompt, inspect the communicated uncertainty, enter and exit Focus
-Mode, reset with **New search**, and inspect any offered note or learning-plan
-export.
-
-An evidence-backed RAG demonstration requires explicitly authorized OpenAI or
-OpenRouter access with an embedding-capable key and may incur provider cost.
-See the [demo guide](docs/demo-guide.md) for the conservative walkthrough and
-[testing](docs/testing.md) for validation commands and current evidence limits.
-No evaluation score is claimed here.
+Offline, Cognivia can demonstrate guided and direct intake, uncertainty states,
+Focus Mode, search reset, notes, and plan exports. Evidence-backed retrieval
+requires explicitly authorized OpenAI or OpenRouter access with an
+embedding-capable key and may incur provider cost. See the
+[demo guide](docs/demo-guide.md) for the walkthrough and
+[testing](docs/testing.md) for validation commands and evidence limits. No
+evaluation score is claimed here.
 
 ## Architecture
 
 ```text
-Streamlit UI
-    |
-    v
-Application graph ──> request shaping / routing
-    |                         |
-    v                         v
-Local RAG                 provider boundary
-    |
-    v
-Markdown/PDF knowledge base
-
-Optional PostgreSQL memory sits behind the memory-store boundary.
+User goal
+    ↓
+Guided intake / request shaping
+    ↓
+Bounded LangGraph routing
+    ↓
+Retrieval decision
+    ↓
+RAG / local Qdrant (when needed)
+    ↓
+Evidence relevance
+    ↓
+Direct-support assessment
+    ↓
+Recommendation / clarification / insufficient evidence
+    ↓
+Learning path / reflection / export
 ```
+
+Provider access, retrieval infrastructure, and optional PostgreSQL memory sit
+behind explicit boundaries.
 
 Presentation, orchestration, retrieval, provider access, memory, persistence,
 input hygiene, and evaluation are represented by distinct modules. `app.py`
 remains the Streamlit composition root and still coordinates some workflow,
 export, and persistence concerns. See
 [`docs/architecture.md`](docs/architecture.md) for the verified component map.
+
+## Engineering trade-offs
+
+- Streamlit favors fast product iteration over a richer multi-user frontend.
+- Local Qdrant favors reproducible development over production-scale retrieval.
+- Bounded routing favors inspectability and failure control over agent autonomy.
+- Curated evidence improves traceability while intentionally limiting coverage.
 
 ## Documentation map
 
@@ -227,14 +243,19 @@ export, and persistence concerns. See
 - [Testing](docs/testing.md)
 - [Evaluation](docs/evaluation.md)
 - [Sources and provenance](docs/sources.md)
-- [Product rationale: Why Cognivia and Not Just ChatGPT?](docs/product/why-cognivia-not-chatgpt.md)
+- [Product rationale: Why Cognivia beyond general-purpose AI assistants](docs/product/why-cognivia-not-chatgpt.md)
 - [Guided learning intake](docs/guided-learning-intake.md)
 - [Future improvements](docs/future-improvements.md)
 - [Engineering history](docs/engineering-history.md)
 - [Project evolution](docs/project-evolution.md)
 
-No evaluation score is claimed here. Current validation status and the commands
-used to establish it belong in the linked testing and evaluation documents.
+> **Public history:** This sanitized public baseline does not reproduce the
+> earlier private commit history; see
+> [Engineering history](docs/engineering-history.md) for the technical
+> progression.
+
+Current validation status and the commands used to establish it belong in the
+linked testing and evaluation documents.
 
 ## Licensing
 
