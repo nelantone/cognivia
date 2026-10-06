@@ -77,7 +77,8 @@ Cognivia complements general-purpose assistants by making the workflow,
 evidence limits, and decision points explicit while keeping human judgment in
 control.
 
-See [Why Cognivia and Not Just ChatGPT?](docs/product/why-cognivia-not-chatgpt.md)
+See
+[Product rationale: Why Cognivia beyond general-purpose AI assistants](docs/product/why-cognivia-not-chatgpt.md)
 for the fuller product rationale.
 
 ## What it does
@@ -133,36 +134,31 @@ These roadmap items are planned, not implemented:
 See [Future Improvements and To-do](docs/future-improvements.md) for the
 maintained broader roadmap.
 
-> **Public history:** Cognivia was initially developed in a private repository.
-> This public repository begins with a sanitized baseline rather than a copy of
-> that private commit history. The earlier technical progression is summarized
-> in [Engineering History](docs/engineering-history.md).
-
 ## Capabilities and boundaries
 
-Implemented in the current repository:
+Implemented:
 
-- Streamlit modes for Noise-to-Signal, AI Skill Compass, and Interview Coach,
-  with guided or direct intake, quick prompts, Focus Mode, and search reset;
-- bounded LangGraph routing with answer, clarification, plan, comparison, and
-  insufficient-evidence outcomes;
-- Markdown/PDF ingestion, provenance-aware chunking, local Qdrant retrieval,
-  relevance filtering, and direct-support assessment;
-- learning paths, next-step guidance, Study notes, and Markdown or JSON
-  exports; and
-- `offline`, `openai`, and `openrouter` provider modes, plus optional
-  append-only PostgreSQL learner memory with a null fallback.
+- Noise-to-Signal, AI Skill Compass, and Interview Coach modes with
+  guided/direct intake, quick prompts, Focus Mode, and search reset;
+- bounded LangGraph answer, clarification, plan, comparison, and
+  insufficient-evidence routes;
+- Markdown/PDF ingestion with provenance-aware local Qdrant retrieval and
+  separate relevance/direct-support checks;
+- learning paths, next-step guidance, Study notes, and Markdown/JSON exports;
+  and
+- provider modes (`offline`, `openai`, `openrouter`) and optional append-only
+  PostgreSQL learner memory with a null fallback.
 
-Important limits:
+Limits:
 
-- Offline mode supports local UI and deterministic workflows, but cannot create
-  or query the provider-backed embedding index.
-- Provider capabilities differ, and live provider behavior has not been
-  verified in this validation pass.
-- Retrieval relevance does not prove direct support or factual certainty; the
-  curated corpus is limited and can yield insufficient evidence.
-- Local Qdrant and the memory foundation support local development, not
-  production-grade index integrity or multi-user persistence.
+- Offline mode supports local UI and deterministic workflows, but cannot
+  create/query the provider-backed embedding index.
+- Provider capabilities differ. One OpenAI-backed retrieval flow was manually
+  verified on 6 October 2026; broader live-provider behavior is not claimed.
+- Retrieval relevance does not prove direct support or certainty; the limited
+  curated corpus can yield insufficient evidence.
+- Local Qdrant and learner memory support development, not production-grade
+  index integrity or multi-user persistence.
 - Production hosting, authentication, authorization, privacy isolation,
   backups, rate limiting, scalability, and hardening are not claimed.
 
@@ -188,22 +184,19 @@ documented in [`.env.example`](.env.example); never commit real secrets.
 
 Validated locally in offline mode on 5 October 2026. The application started
 successfully, passed its local health check, and the isolated offline suite
-passed 593 tests with dotenv loading disabled. Interactive browser verification
-was not completed in this validation pass. Provider-backed RAG requires a
-configured embedding-capable provider.
+passed 593 tests with dotenv loading disabled. On 6 October 2026, one
+OpenAI-backed retrieval flow and its rendered Streamlit result were manually
+verified without errors; broader live-provider behavior is not claimed.
 
 ## Demo and validation guidance
 
-For an offline walkthrough, select **Noise-to-Signal Agent**, use guided intake
-or a quick prompt, inspect the communicated uncertainty, enter and exit Focus
-Mode, reset with **New search**, and inspect any offered note or learning-plan
-export.
-
-An evidence-backed RAG demonstration requires explicitly authorized OpenAI or
-OpenRouter access with an embedding-capable key and may incur provider cost.
-See the [demo guide](docs/demo-guide.md) for the conservative walkthrough and
-[testing](docs/testing.md) for validation commands and current evidence limits.
-No evaluation score is claimed here.
+Offline, Cognivia can demonstrate guided and direct intake, uncertainty states,
+Focus Mode, search reset, notes, and plan exports. Evidence-backed retrieval
+requires explicitly authorized OpenAI or OpenRouter access with an
+embedding-capable key and may incur provider cost. See the
+[demo guide](docs/demo-guide.md) for the walkthrough and
+[testing](docs/testing.md) for validation commands and evidence limits. No
+evaluation score is claimed here.
 
 ## Architecture
 
@@ -250,11 +243,16 @@ export, and persistence concerns. See
 - [Testing](docs/testing.md)
 - [Evaluation](docs/evaluation.md)
 - [Sources and provenance](docs/sources.md)
-- [Product rationale: Why Cognivia and Not Just ChatGPT?](docs/product/why-cognivia-not-chatgpt.md)
+- [Product rationale: Why Cognivia beyond general-purpose AI assistants](docs/product/why-cognivia-not-chatgpt.md)
 - [Guided learning intake](docs/guided-learning-intake.md)
 - [Future improvements](docs/future-improvements.md)
 - [Engineering history](docs/engineering-history.md)
 - [Project evolution](docs/project-evolution.md)
+
+> **Public history:** This sanitized public baseline does not reproduce the
+> earlier private commit history; see
+> [Engineering history](docs/engineering-history.md) for the technical
+> progression.
 
 No evaluation score is claimed here. Current validation status and the commands
 used to establish it belong in the linked testing and evaluation documents.
