@@ -14,6 +14,16 @@ goal, assess available support, and preserve human judgment.
 
 **Python · RAG · LangGraph · Streamlit · Evaluation & Reliability · Pytest · GitHub Actions**
 
+## Product preview
+
+### Guided intake
+
+![Cognivia guided intake](assets/screenshots/01-guided-intake.png)
+
+### Evidence-guided recommendation
+
+![Cognivia recommendation overview](assets/screenshots/02-recommendation-overview.png)
+
 ## Why this project matters
 
 - Bounded orchestration replaces open-ended agent loops with explicit routes
@@ -50,11 +60,11 @@ Cognivia treats this as a decision workflow rather than a one-shot chat
 answer: clarify the goal, assess the available evidence, expose uncertainty,
 and help the learner choose a direction.
 
-## Why Cognivia, not ChatGPT?
+## Why Cognivia, not a general-purpose AI assistant?
 
-General-purpose LLMs provide broad conversational reasoning and are useful for
-one-off questions. Cognivia adds a structured learning-decision system around
-those capabilities:
+General-purpose AI assistants and LLMs provide broad conversational reasoning
+and are useful for one-off questions. Cognivia adds a structured
+learning-decision workflow around those capabilities:
 
 - goal clarification for vague requests;
 - bounded routing with explicit terminal outcomes;
@@ -63,8 +73,9 @@ those capabilities:
 - learning paths, reflection, notes, and exports that keep the learner in
   control.
 
-Cognivia complements general-purpose LLMs by making the workflow, evidence
-limits, and decision points explicit.
+Cognivia complements general-purpose assistants by making the workflow,
+evidence limits, and decision points explicit while keeping human judgment in
+control.
 
 See [Why Cognivia and Not Just ChatGPT?](docs/product/why-cognivia-not-chatgpt.md)
 for the fuller product rationale.
