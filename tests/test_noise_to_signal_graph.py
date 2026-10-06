@@ -359,6 +359,88 @@ def test_agentic_rag_context_rich_learning_next_goal_retrieves():
     assert "Retrieval skipped: more context required." not in result["decision_trace"]
 
 
+@pytest.mark.parametrize(
+    ("goal", "expected_options"),
+    [
+        (
+            "I’m targeting Applied AI Engineer roles and want to deploy Cognivia as "
+            "a production-ready portfolio project. I already know the basics of RAG "
+            "and LangGraph. Should I focus next on LLM evaluation or deployment, "
+            "and why?",
+            ["LLM evaluation", "deployment"],
+        ),
+        (
+            "I’m a backend developer moving into AI. Should I focus next on "
+            "evaluation or model deployment?",
+            ["evaluation", "model deployment"],
+        ),
+        (
+            "Should I focus on LangGraph or RAG evaluation?",
+            ["LangGraph", "RAG evaluation"],
+        ),
+        (
+            "Should I learn observability or deployment next?",
+            ["observability", "deployment"],
+        ),
+    ],
+)
+def test_explicit_learning_comparisons_have_retrievable_request_shape(
+    goal,
+    expected_options,
+):
+    result = determine_request_shape({"goal": goal})
+
+    assert result["decision_status"] == "insufficient_evidence"
+    assert result["needs_clarification"] is False
+    assert result["interaction_mode"] == "direct_decision"
+    assert result["options"] == expected_options
+    assert result["retrieval_required"] is True
+    assert result["retrieval_query"] == goal
+
+
+def test_context_rich_comparison_retrieves_and_selects_supported_priority():
+    goal = (
+        "I’m targeting Applied AI Engineer roles and want to deploy Cognivia as a "
+        "production-ready portfolio project. I already know the basics of RAG and "
+        "LangGraph. Should I focus next on LLM evaluation or deployment, and why?"
+    )
+    docs = [
+        Document(
+            page_content=(
+                "LLM evaluation measures retrieval quality, answer quality, source "
+                "grounding, and failure behavior for production AI systems."
+            ),
+            metadata={"source": "evaluation.md", "filename": "evaluation.md"},
+        ),
+        Document(
+            page_content=(
+                "Deployment packages an AI application for reliable delivery."
+            ),
+            metadata={"source": "deployment.md", "filename": "deployment.md"},
+        ),
+    ]
+    retriever = RecordingRetriever(results=[docs])
+
+    result = run_noise_to_signal(goal, retriever=retriever)
+
+    assert retriever.calls
+    assert retriever.calls[0]["query"] == goal
+    assert result["retrieval_attempts"] == 1
+    assert result["options"] == ["LLM evaluation", "deployment"]
+    assert [item["option"] for item in result["option_scores"]] == [
+        "LLM evaluation",
+        "deployment",
+    ]
+    assert result["decision_status"] == "selected"
+    assert result["selected_focus"] == "LLM evaluation"
+    assert result["needs_clarification"] is False
+    trace = "\n".join(result["decision_trace"])
+    assert "LLM evaluation" in trace
+    assert "deployment" in trace
+    assert "Selected focus: LLM evaluation" in trace
+    assert "goal is too broad" not in result["recommendation"].lower()
+
+
 def test_agentic_rag_first_retrieval_can_be_sufficient():
     retriever = RecordingRetriever(
         results=[

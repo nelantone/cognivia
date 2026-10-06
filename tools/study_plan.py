@@ -56,7 +56,13 @@ VALID_LOWERCASE_STARTS = {
     "with",
 }
 DECISION_FOCUS_PATTERN = re.compile(
-    r"\bshould\s+i\s+(?:prioritize|focus\s+on|learn)\s+(?P<focus>.+?)(?:\?|$)",
+    r"\bshould\s+i\s+"
+    r"(?:prioritize|choose|focus(?:\s+next)?\s+on|learn)\s+"
+    r"(?P<focus>.+?)(?:\?|$)",
+    re.IGNORECASE,
+)
+DECISION_FOCUS_SUFFIX_PATTERN = re.compile(
+    r"(?:\s+next|\s*,?\s+and\s+why)\s*$",
     re.IGNORECASE,
 )
 SINGLE_FOCUS_PATTERNS = (
@@ -792,6 +798,12 @@ def _extract_decision_options(goal):
         return []
 
     focus = focus_match.group("focus").strip(" ?.!")
+    while True:
+        cleaned_focus = DECISION_FOCUS_SUFFIX_PATTERN.sub("", focus).rstrip(" ,")
+        if cleaned_focus == focus:
+            break
+        focus = cleaned_focus
+
     normalized_focus = re.sub(r"\s*,?\s+or\s+", ", ", focus, flags=re.IGNORECASE)
     options = [
         option.strip(" .?!")
