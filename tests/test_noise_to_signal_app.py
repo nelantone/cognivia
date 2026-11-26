@@ -2282,6 +2282,7 @@ def test_secondary_runtime_drawer_uses_shared_compact_dynamic_data():
                 "persistence": "None",
                 "evidence": "Local Qdrant / RAG",
                 "api_credits": "May use OpenAI credits",
+                "llm_calls": "today 30/30 calls left",
             },
         ),
         (
@@ -2296,6 +2297,7 @@ def test_secondary_runtime_drawer_uses_shared_compact_dynamic_data():
                 "persistence": "Persistent",
                 "evidence": "Local Qdrant / RAG",
                 "api_credits": "May use OpenRouter credits",
+                "llm_calls": "today 30/30 calls left",
             },
         ),
         (
@@ -2307,6 +2309,7 @@ def test_secondary_runtime_drawer_uses_shared_compact_dynamic_data():
                 "persistence": "None",
                 "evidence": "Local Qdrant / RAG",
                 "api_credits": "Not used",
+                "llm_calls": "Not limited",
             },
         ),
     )

@@ -14,3 +14,15 @@ def disable_langsmith_tracing_for_tests() -> None:
 
 
 disable_langsmith_tracing_for_tests()
+
+
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def isolated_llm_usage_counter(monkeypatch):
+    """Give every test a fresh global LLM-call counter (no cross-test budget)."""
+    from tools import usage_limits
+
+    counter = usage_limits.DailyCallCounter()
+    monkeypatch.setattr(usage_limits, "get_global_counter", lambda: counter)

@@ -7,6 +7,7 @@ from typing import Any, Literal, TypedDict
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_openai import ChatOpenAI
 from tools.provider_config import get_provider_config, provider_api_key, provider_base_url
+from tools.usage_limits import LIMIT_MESSAGE, LLMLimitReached, try_consume_llm_call
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel, Field, ValidationError
 
@@ -156,6 +157,7 @@ class NoiseToSignalState(TypedDict, total=False):
     routing_attempts: int
     original_goal: str | None
     pending_clarification: bool
+    llm_limit_reached: bool
     clarification_context: str | None
     context_only_followup: bool
     retrieval_override: bool
@@ -313,6 +315,7 @@ def resolve_clarification_context(state: NoiseToSignalState) -> NoiseToSignalSta
                 "goal": clean_goal,
                 "original_goal": None,
                 "pending_clarification": False,
+                "llm_limit_reached": False,
                 "clarification_context": None,
                 "context_only_followup": False,
             }
@@ -332,6 +335,7 @@ def resolve_clarification_context(state: NoiseToSignalState) -> NoiseToSignalSta
             "goal": context_display,
             "original_goal": original_goal,
             "pending_clarification": False,
+            "llm_limit_reached": False,
             "clarification_context": clarification_context,
             "context_only_followup": True,
         }
@@ -340,6 +344,7 @@ def resolve_clarification_context(state: NoiseToSignalState) -> NoiseToSignalSta
         "goal": clean_goal,
         "original_goal": None,
         "pending_clarification": False,
+        "llm_limit_reached": False,
         "clarification_context": None,
         "context_only_followup": False,
     }
@@ -930,6 +935,9 @@ def _build_llm_intent_classifier():
 
 
 def _classify_with_default_llm(goal: str, evidence: dict[str, Any]):
+    # Demo limit: each classifier attempt is one live provider call.
+    if not try_consume_llm_call():
+        raise LLMLimitReached(LIMIT_MESSAGE)
     classifier = _build_llm_intent_classifier()
     evidence_summary = evidence.get("summary") or "No retrieved evidence was available."
     messages = [
@@ -1109,6 +1117,14 @@ def classify_ambiguous_intent_with_llm(
     for attempt in range(1, 3):
         try:
             raw_result = classifier(state["goal"], state.get("evidence", {}))
+        except LLMLimitReached:
+            # Explicit demo-limit fallback: no retry, and no clarification question.
+            return {
+                **_fallback_to_clarification(
+                    LIMIT_MESSAGE, routing_attempts=attempt
+                ),
+                "llm_limit_reached": True,
+            }
         except Exception:
             fallback_reason = "LLM intent classification failed; asking for clarification."
             continue
@@ -1240,6 +1256,13 @@ def request_clarification(state: NoiseToSignalState) -> NoiseToSignalState:
     clarification_context = state.get("clarification_context")
     goal = _clean_text(state.get("goal", ""))
     guided_intake_entry_point = state.get("guided_intake_entry_point")
+    if state.get("llm_limit_reached"):
+        return {
+            **_with_trace(state, LIMIT_MESSAGE, LIMIT_MESSAGE, LIMIT_MESSAGE),
+            "original_goal": state.get("original_goal") or state["goal"],
+            "pending_clarification": False,
+            "clarification_context": None,
+        }
     if guided_intake_entry_point:
         recommendation = (
             "I need a little learner profile context before choosing a "
