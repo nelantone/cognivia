@@ -2487,3 +2487,57 @@ def test_valid_llm_clarification_result_is_not_retried():
     assert result["routing_reason"] == (
         "The ambiguous request needs one more constraint."
     )
+
+
+def test_classifier_demo_limit_shows_limit_message_without_retry_or_question(
+    monkeypatch,
+):
+    import tools.noise_to_signal_graph as graph_module
+    from tools.usage_limits import LIMIT_MESSAGE
+
+    monkeypatch.setenv("COGNIVIA_LLM_PROVIDER", "openai")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("COGNIVIA_MAX_QUERIES_PER_DAY", "0")
+    monkeypatch.setattr(
+        graph_module,
+        "ChatOpenAI",
+        lambda **kwargs: pytest.fail("provider client built after limit"),
+    )
+    state = {"goal": "something vague", "evidence": {}}
+
+    routed = graph_module.classify_ambiguous_intent_with_llm(state)
+
+    assert routed["llm_limit_reached"] is True
+    assert routed["routing_attempts"] == 1
+    assert routed["decision_status"] == "needs_clarification"
+
+    response = graph_module.request_clarification({**state, **routed})
+
+    assert response["recommendation"] == LIMIT_MESSAGE
+    assert response["next_action"] == LIMIT_MESSAGE
+    assert response["pending_clarification"] is False
+    assert "Please provide" not in response["recommendation"]
+
+
+def test_classifier_failure_without_limit_still_asks_for_clarification():
+    import tools.noise_to_signal_graph as graph_module
+
+    def failing_classifier(goal, evidence):
+        raise RuntimeError("boom")
+
+    routed = graph_module.classify_ambiguous_intent_with_llm(
+        {"goal": "vague", "evidence": {}}, intent_classifier=failing_classifier
+    )
+
+    assert "llm_limit_reached" not in routed
+    assert routed["routing_attempts"] == 2
+
+
+def test_limit_flag_does_not_leak_into_next_turn_on_same_thread():
+    import tools.noise_to_signal_graph as graph_module
+
+    state = graph_module.resolve_clarification_context(
+        {"goal": "Kubernetes for AI Engineer?", "llm_limit_reached": True}
+    )
+
+    assert state["llm_limit_reached"] is False

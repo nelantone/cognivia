@@ -149,6 +149,7 @@ from tools.learning_exports import (
     build_full_learning_plan_document,
     build_learning_reflection_markdown,
 )
+from tools.usage_limits import LIMIT_MESSAGE
 from tools.recommendation_explanations import (
     explain_career_path,
     explain_direction,
@@ -1965,6 +1966,11 @@ def _render_noise_to_signal_technical_details(decision):
 
 
 def _render_noise_to_signal_result(decision, study_plan, goal: str | None = None):
+    if decision.get("llm_limit_reached"):
+        # Demo limit: show the message once, without the usual result sections.
+        st.warning(LIMIT_MESSAGE)
+        return
+
     _render_noise_to_signal_metrics(decision)
     _render_noise_to_signal_retrieval_warning(decision)
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Mapping
 
 from tools.provider_config import OPENAI, OFFLINE, OPENROUTER, get_provider_config
+from tools.usage_limits import get_usage_snapshot
 
 
 def _has_config_value(config: Mapping[str, str | None], key: str) -> bool:
@@ -54,3 +55,26 @@ def build_runtime_status_lines(config: Mapping[str, str | None]) -> list[str]:
         memory_status,
         "Evidence: local Qdrant/RAG evidence path",
     ]
+
+
+def build_usage_status_text(
+    config: Mapping[str, str | None] | None = None,
+    *,
+    session_store=None,
+    counter=None,
+    now=None,
+) -> str:
+    """Return remaining live LLM calls (not queries) without external calls."""
+    snapshot = get_usage_snapshot(
+        config, session_store=session_store, counter=counter, now=now
+    )
+    if not snapshot.limited:
+        return "Not limited"
+
+    day = f"today {snapshot.day_remaining}/{snapshot.day_limit}"
+    if snapshot.session_remaining is None:
+        return f"{day} calls left"
+    return (
+        f"session {snapshot.session_remaining}/{snapshot.session_limit}, "
+        f"{day} calls left"
+    )
