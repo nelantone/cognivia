@@ -4426,3 +4426,35 @@ def test_noise_to_signal_does_not_render_checkbox_background_panel():
         for checkbox in app.checkbox
         if checkbox.label in {"Show visual background", "Play video background"}
     ]
+
+
+def test_demo_limit_message_is_shown_once_without_result_sections():
+    from tools.usage_limits import LIMIT_MESSAGE
+
+    goal = "I am unsure whether LangGraph is the right next step for me."
+    limit_result = {
+        **_single_focus_result(goal),
+        "decision_status": "needs_clarification",
+        "selected_focus": None,
+        "recommendation": LIMIT_MESSAGE,
+        "next_action": LIMIT_MESSAGE,
+        "decision_trace": [f"Short evidence-based reasoning: {LIMIT_MESSAGE}"],
+        "routing_reason": LIMIT_MESSAGE,
+        "llm_limit_reached": True,
+    }
+
+    app, _ = _run_noise_to_signal_app_sequence(
+        [(goal, limit_result, None)],
+        memory_store=RecordingMemoryStore(),
+        submit_with_current_input=True,
+    )
+
+    assert not app.exception
+    rendered = [
+        str(element.value)
+        for kind in ("markdown", "caption", "text", "info", "warning", "error")
+        for element in getattr(app, kind)
+    ]
+    assert sum(LIMIT_MESSAGE in text for text in rendered) == 1
+    assert [item.value for item in app.warning] == [LIMIT_MESSAGE]
+    assert not app.tabs
