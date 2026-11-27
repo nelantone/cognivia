@@ -256,3 +256,20 @@ class TestShouldRetry:
         """HTTPError without response should not be retried."""
         err = requests.HTTPError()
         assert _should_retry(err) is False
+
+
+class TestDemoUsageLimit:
+    def test_limit_reached_raises_clear_error_without_request(self, monkeypatch):
+        def unexpected_post(*args, **kwargs):
+            raise AssertionError("limit reached but a provider request was made")
+
+        monkeypatch.setenv("COGNIVIA_LLM_PROVIDER", "openai")
+        monkeypatch.setenv("OPENAI_API_KEY", "openai-test-key")
+        monkeypatch.setenv("COGNIVIA_MAX_QUERIES_PER_DAY", "0")
+        monkeypatch.setattr(openrouter_client.requests, "post", unexpected_post)
+        monkeypatch.setattr(openrouter_client, "_make_request", unexpected_post)
+
+        with pytest.raises(
+            openrouter_client.OpenRouterError, match="Demo limit reached"
+        ):
+            call_provider_chat("user", "system")

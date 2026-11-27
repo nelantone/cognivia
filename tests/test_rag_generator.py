@@ -54,3 +54,36 @@ def test_answer_with_rag_returns_safe_message_when_retrieval_is_empty(monkeypatc
     assert result["sources"] == []
     assert result["retrieved_context"] == "No relevant context was retrieved."
     assert "could not find relevant local evidence" in result["answer"]
+
+
+def test_answer_with_rag_falls_back_when_demo_limit_is_reached(monkeypatch):
+    documents = [
+        Document(page_content="RAG notes.", metadata={"source": "a.md", "chunk_index": 0})
+    ]
+    monkeypatch.setattr(generator, "retrieve_relevant_chunks", lambda *a, **k: documents)
+    monkeypatch.setenv("COGNIVIA_LLM_PROVIDER", "openai")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("COGNIVIA_MAX_QUERIES_PER_DAY", "0")
+    monkeypatch.setattr(
+        generator,
+        "ChatOpenAI",
+        lambda **kwargs: pytest.fail("provider client built after limit"),
+    )
+
+    result = generator.answer_with_rag("What is RAG?")
+
+    assert result["answer"] == generator.LIMIT_MESSAGE
+    assert result["sources"] == []
+
+
+def test_answer_with_rag_offline_is_not_limited(monkeypatch):
+    documents = [
+        Document(page_content="RAG notes.", metadata={"source": "a.md", "chunk_index": 0})
+    ]
+    monkeypatch.setattr(generator, "retrieve_relevant_chunks", lambda *a, **k: documents)
+    monkeypatch.setenv("COGNIVIA_LLM_PROVIDER", "offline")
+    monkeypatch.setenv("COGNIVIA_MAX_QUERIES_PER_DAY", "0")
+
+    result = generator.answer_with_rag("What is RAG?")
+
+    assert result["answer"] != generator.LIMIT_MESSAGE

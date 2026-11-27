@@ -13,6 +13,7 @@ from tools.provider_config import (
     provider_api_key,
     provider_base_url,
 )
+from tools.usage_limits import LIMIT_MESSAGE, try_consume_llm_call
 
 load_dotenv()
 
@@ -156,6 +157,11 @@ def call_provider_chat(
         raise OpenRouterError(
             provider_config.error or "AI provider is configured for offline mode."
         )
+
+    # Demo limit: counts one live provider call (tenacity retries inside it are
+    # not counted separately). Checked right before any spend.
+    if not try_consume_llm_call():
+        raise OpenRouterError(LIMIT_MESSAGE)
 
     if provider_config.provider == OPENROUTER:
         return call_openrouter(

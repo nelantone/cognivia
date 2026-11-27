@@ -8,6 +8,7 @@ from rag.retriever import retrieve_relevant_chunks
 # Import DEFAULT_MODEL from openrouter_client for model selection
 from openrouter_client import DEFAULT_MODEL
 from tools.provider_config import get_provider_config, provider_api_key, provider_base_url
+from tools.usage_limits import LIMIT_MESSAGE, try_consume_llm_call
 
 
 RAG_SYSTEM_PROMPT = """
@@ -103,7 +104,15 @@ def answer_with_rag(
     # Use ChatOpenAI for OpenRouter-compatible chat completion.
     provider_config = get_provider_config()
     api_key = provider_api_key(provider_config)
-    if api_key and provider_config.error is None:
+    if api_key and provider_config.error is None and not try_consume_llm_call():
+        # Demo limit reached: explicit deterministic fallback, no provider call.
+        # Return no sources so the limit message is not shown as a grounded answer.
+        return {
+            "answer": LIMIT_MESSAGE,
+            "sources": [],
+            "retrieved_context": retrieved_context,
+        }
+    elif api_key and provider_config.error is None:
         model_kwargs = {
             "model": DEFAULT_MODEL.removeprefix("openai/"),
             "api_key": api_key,

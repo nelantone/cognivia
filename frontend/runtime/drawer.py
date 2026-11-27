@@ -5,7 +5,7 @@ import streamlit as st
 
 from frontend.assets import BRAND_ASSET_DIR, _asset_data_uri
 from tools.provider_config import OPENAI, OFFLINE, OPENROUTER, get_provider_config
-from tools.runtime_status import build_runtime_status_lines
+from tools.runtime_status import build_runtime_status_lines, build_usage_status_text
 
 
 def _render_runtime_status() -> None:
@@ -72,6 +72,7 @@ def _runtime_presentation_data(
         "persistence": persistence,
         "evidence": evidence,
         "api_credits": api_credits,
+        "llm_calls": build_usage_status_text(config),
     }
 
 
@@ -85,6 +86,7 @@ def _runtime_technical_details(
         ("Persistence", presentation["persistence"]),
         ("Evidence", presentation["evidence"]),
         ("API credits", presentation["api_credits"]),
+        ("LLM calls left", presentation["llm_calls"]),
     )
 
 

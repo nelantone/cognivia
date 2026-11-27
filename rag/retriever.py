@@ -79,7 +79,11 @@ def build_documents_from_chunks(chunks):
 
 
 def create_embeddings():
-    """Create embeddings for the selected OpenAI-compatible provider."""
+    """Create embeddings for the selected OpenAI-compatible provider.
+
+    Embedding calls are intentionally NOT counted by tools.usage_limits; the
+    demo limit only covers chat/LLM calls.
+    """
     provider_config = get_provider_config()
     api_key = provider_api_key(provider_config)
     if provider_config.error or not api_key:
